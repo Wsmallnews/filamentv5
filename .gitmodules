@@ -1,0 +1,21 @@
+[submodule "addons/category"]
+	path = addons/category
+	url = git@github.com:Wsmallnews/category.git
+[submodule "addons/cms"]
+	path = addons/cms
+	url = git@github.com:Wsmallnews/cms.git
+[submodule "addons/comment"]
+	path = addons/comment
+	url = git@github.com:Wsmallnews/comment.git
+[submodule "addons/filament-nestedset"]
+	path = addons/filament-nestedset
+	url = git@github.com:Wsmallnews/filament-nestedset.git
+[submodule "addons/preference"]
+	path = addons/preference
+	url = git@github.com:Wsmallnews/preference.git
+[submodule "addons/support"]
+	path = addons/support
+	url = git@github.com:Wsmallnews/support.git
+[submodule "addons/user"]
+	path = addons/user
+	url = git@github.com:Wsmallnews/user.git
