@@ -1,6 +1,10 @@
 @import "../../../../vendor/filament/filament/resources/css/theme.css";
 
+/* wsmallnews/support */
 @import "../../../../vendor/wsmallnews/support/resources/css/index.css";
+
+/* wsmallnews/comment */
+@import "../../../../vendor/wsmallnews/comment/resources/css/index.css";
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
