@@ -31,11 +31,13 @@ use Spatie\Permission\Traits\HasRoles;
 use Wsmallnews\Comment\Models\Concerns\BeReplyer;
 use Wsmallnews\Comment\Models\Concerns\Commenter;
 use Wsmallnews\Comment\Support\Utils as CommentUtils;
+use Wsmallnews\Support\Contracts\HasSnIdentifiable;
+use Wsmallnews\Support\Concerns\UserIdentifiable;
 use Wsmallnews\User\Models\Concerns\TwoFactorAuthenticatable;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery, HasAvatar, HasEmailAuthentication, HasName, MustVerifyEmail
+class User extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery, HasAvatar, HasEmailAuthentication, HasName, HasSnIdentifiable, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use BeReplyer;
@@ -47,6 +49,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     use InteractsWithEmailAuthentication;
     use TwoFactorAuthenticatable;
     use \Wsmallnews\User\Userable;
+    use UserIdentifiable;
     use \Wsmallnews\Preference\Models\Concerns\Preferencer;
     use \Wsmallnews\Preference\Models\Concerns\Preferencer\Liker;
 

@@ -6,5 +6,8 @@
 /* wsmallnews/comment */
 @import "../../../../vendor/wsmallnews/comment/resources/css/index.css";
 
+/* wsmallnews/cms */
+@import "../../../../vendor/wsmallnews/cms/resources/css/index.css";
+
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';

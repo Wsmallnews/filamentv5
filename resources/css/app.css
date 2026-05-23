@@ -1,4 +1,13 @@
-@import 'tailwindcss';
+@import "../../vendor/filament/filament/resources/css/theme.css";
+
+/* wsmallnews/support */
+@import "../../vendor/wsmallnews/support/resources/css/index.css";
+
+/* wsmallnews/comment */
+@import "../../vendor/wsmallnews/comment/resources/css/index.css";
+
+/* wsmallnews/cms */
+@import "../../vendor/wsmallnews/cms/resources/css/index.css";
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -6,6 +15,8 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans:
+        "Instrument Sans", ui-sans-serif, system-ui, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+        "Noto Color Emoji";
 }

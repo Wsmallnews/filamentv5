@@ -42,6 +42,10 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'admin' => [        // 租户登录
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
     ],
 
     /*
