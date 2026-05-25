@@ -7,12 +7,16 @@
     "mcp": true,
     "nightwatch": false,
     "packages": [
-        "filament/filament"
+        "filament/filament",
+        "fruitcake/laravel-debugbar",
+        "wsmallnews/support"
     ],
     "sail": false,
     "skills": [
         "laravel-best-practices",
+        "livewire-development",
         "pest-testing",
-        "tailwindcss-development"
+        "tailwindcss-development",
+        "debug-using-debugbar"
     ]
 }
