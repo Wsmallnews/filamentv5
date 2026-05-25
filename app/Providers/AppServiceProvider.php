@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
+use Wsmallnews\Cms\Facades\ContentRegistry as ContentRegistryFacade;
+use Wsmallnews\Cms\Support\Utils as CmsUtils;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,5 +32,8 @@ class AppServiceProvider extends ServiceProvider
             'user' => \App\Models\User::class,
             'navigation' => \App\Models\Navigation::class
         ]);
+
+        // 注册导航内容
+        ContentRegistryFacade::registers(CmsUtils::getScopeType(), []);
     }
 }
