@@ -3,6 +3,9 @@
 /* wsmallnews/support */
 @import "../../../../vendor/wsmallnews/support/resources/css/index.css";
 
+/* wsmallnews/preference */
+@import "../../../../vendor/wsmallnews/preference/resources/css/index.css";
+
 /* wsmallnews/comment */
 @import "../../../../vendor/wsmallnews/comment/resources/css/index.css";
 
