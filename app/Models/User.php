@@ -24,7 +24,9 @@ use Spatie\Activitylog\Support\LogOptions;
 use Wsmallnews\Comment\Models\Concerns\BeReplyer;
 use Wsmallnews\Comment\Models\Concerns\Commenter;
 use Wsmallnews\Preference\Models\Concerns\Preferencer;
+use Wsmallnews\Preference\Models\Concerns\Preferencer\Follower;
 use Wsmallnews\Preference\Models\Concerns\Preferencer\Liker;
+use Wsmallnews\Preference\Models\Concerns\Preferencer\Viewer;
 use Wsmallnews\Support\Concerns\UserIdentifiable;
 use Wsmallnews\Support\Contracts\HasSnIdentifiable;
 use Wsmallnews\User\Models\Concerns\TwoFactorAuthenticatable;
@@ -38,6 +40,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     use BeReplyer;
 
     use Commenter;
+    use Follower;
     use HasActivity;
     use HasFactory, Notifiable;
     use InteractsWithAppAuthentication;
@@ -48,6 +51,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     use TwoFactorAuthenticatable;
     use Userable;
     use UserIdentifiable;
+    use Viewer;
 
     /**
      * Get the attributes that should be cast.

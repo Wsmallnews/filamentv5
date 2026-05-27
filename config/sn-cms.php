@@ -98,6 +98,7 @@ return [
             'login' => 'login',
             'register' => 'register',
             'profile' => 'profile',
+            'profile-views' => 'profile/views',
             'forgot-password' => 'forgot-password',
             'reset-password' => 'reset-password/{token}',
             'verify-email' => 'verify-email',

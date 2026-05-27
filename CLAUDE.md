@@ -405,6 +405,329 @@ livewire(ListUsers::class)
   - `$navigationGroup`: `protected static string | UnitEnum | null` (not `?string`)
   - `$view`: `protected string` (not `protected static string`) on `Page` and `Widget` classes
 
+=== wsmallnews/preference rules ===
+
+## Preference 包（wsmallnews/preference）
+
+`wsmallnews/preference` 是一个多态偏好/互动追踪系统，提供点赞（like）、关注（follow）、浏览（view）三种互动类型的完整功能。命名空间根为 `Wsmallnews\Preference`，Blade 视图前缀为 `sn-preference`，配置文件为 `config/sn-preference.php`。
+
+### 核心架构
+
+通过单张 `sn_preferences` 表 + 多态关联实现三种互动类型：
+
+- **preferencer（操作者）**：执行点赞/关注/浏览的用户或模型，必须实现 `HasSnIdentifiable` 接口
+- **preferenceable（目标）**：被操作的内容实体，必须实现 `HasSnSubject` 接口
+- **计数器**：所有操作自动维护 JSON 计数器（`counter->like_num`、`counter->follow_num`、`counter->followed_num`、`counter->view_num`），配合 support 包的 `CounterCast` 使用
+
+### 依赖的接口（来自 support 包）
+
+preference 包的 Blade 组件依赖以下两个接口获取展示数据：
+
+- `Wsmallnews\Support\Contracts\HasSnIdentifiable` — 操作者侧接口（`getSnId()`、`getSnName()`、`getSnAvatarUrl()`、`getSnEmail()`、`getSnHrefUrl()`）
+- `Wsmallnews\Support\Contracts\HasSnSubject` — 目标侧接口（`getSnSubjectId()`、`getSnSubjectTitle()`、`getSnSubjectDescription()`、`getSnSubjectCoverUrl()`、`getSnSubjectHrefUrl()`）
+
+User 模型可直接 use `Wsmallnews\Support\Concerns\UserIdentifiable` trait 来实现 `HasSnIdentifiable`。`HasSnSubject` 没有默认 trait，每个模型需自行实现。
+
+### hasLink 机制
+
+三个基础 Blade 组件（`sn-preference::components.preference`、`preferenceable`、`preferencer`）均接受 `hasLink` prop（默认 `false`）。**注意：`isLink` 已改名为 `hasLink`，旧属性名不再有效。**
+
+- **`hasLink=true` 且 `getSnHrefUrl()`/`getSnSubjectHrefUrl()` 返回非空 URL**：组件渲染为 `<a>` 标签，可点击跳转
+- **`hasLink=true` 但 URL 为空**：组件渲染为 `<div>`，点击时通过 `wire:click.stop` 分发 Livewire 事件（`sn-preference-preferencer-click` 或 `sn-preference-preferenceable-click`），由父组件处理
+- **`hasLink=false`（默认）**：组件渲染为普通 `<div>`，无交互
+
+```blade
+{{-- 可点击跳转的偏好列表项 --}}
+<x-sn-preference::preferenceable
+    :preference="$item"
+    :preferenceable="$item->preferenceable"
+    :has-link="true"
+/>
+
+{{-- 无链接，点击时分发事件 --}}
+<x-sn-preference::preferencer
+    :preference="$item"
+    :preferencer="$item->preferencer"
+    :has-link="true"
+/>
+```
+
+### Model traits（操作者侧 — Preferencer）
+
+模型必须实现 `HasSnIdentifiable` 接口后才能使用以下 traits。所有操作自动维护 JSON 计数器。
+
+#### Follower（关注）
+
+`Wsmallnews\Preference\Models\Concerns\Preferencer\Follower`：
+
+```php
+use Wsmallnews\Preference\Models\Concerns\Preferencer\Follower;
+
+// 核心操作
+$user->follow($post);           // 关注，返回 Preference 记录
+$user->unfollow($post);         // 取消关注，返回 bool
+$user->toggleFollow($post);     // 切换关注状态
+
+// 状态查询
+$user->isFollowing($post);          // 是否已关注
+$user->isMutualFollowed($post);     // 是否互相关注
+
+// 关联和统计
+$user->followingUsers();        // MorphToMany，我关注的用户列表
+$user->followingCount();        // 我关注的用户数量
+$user->follows();               // MorphMany 关联（type='follow'）
+
+// 批量附加关注状态
+$user->attachFollowStatus($posts);  // 为集合中的每个模型设置 has_followed 属性
+```
+
+互相关注时，系统会在 `options` JSON 列中自动写入 `followed_at` 时间戳。
+
+#### Liker（点赞）
+
+`Wsmallnews\Preference\Models\Concerns\Preferencer\Liker`：
+
+```php
+use Wsmallnews\Preference\Models\Concerns\Preferencer\Liker;
+
+// 核心操作
+$user->like($post);             // 点赞，返回 Preference 记录
+$user->unlike($post);           // 取消点赞，返回 bool
+$user->toggleLike($post);       // 切换点赞状态
+
+// 状态查询
+$user->hasLiked($post);         // 是否已点赞
+
+// 关联
+$user->likes();                 // MorphMany 关联（type='like'）
+
+// 批量附加点赞状态
+$user->attachLikeStatus($posts);    // 为集合中的每个模型设置 has_liked 属性
+```
+
+#### Viewer（浏览）
+
+`Wsmallnews\Preference\Models\Concerns\Preferencer\Viewer`：
+
+```php
+use Wsmallnews\Preference\Models\Concerns\Preferencer\Viewer;
+
+// 核心操作
+$user->view($post);             // 记录浏览，返回 Preference 记录（重复浏览时更新 updated_at）
+
+// 状态查询
+$user->hasViewed($post);        // 是否已浏览
+
+// 删除记录
+$user->deleteView($post);       // 删除单条浏览记录
+$user->clearAllViews($type);    // 清空所有浏览记录（不限租户和 scope）
+$user->clearScopeableViews(['scope_type' => 'post', 'scope_id' => 0], $type);  // 按 scope 清空
+
+// 关联
+$user->views();                 // MorphMany 关联（type='view'）
+
+// 批量附加浏览状态
+$user->attachViewStatus($posts);    // 为集合中的每个模型设置 has_viewed 属性
+```
+
+### Model traits（目标侧 — Preferenceable）
+
+被操作的内容模型使用以下 traits。
+
+#### Followable（被关注）
+
+`Wsmallnews\Preference\Models\Concerns\Preferenceable\Followable`：
+
+```php
+use Wsmallnews\Preference\Models\Concerns\Preferenceable\Followable;
+
+// 状态查询
+$post->isFollowedBy($user);         // 是否被某用户关注
+$post->isMutualFollowedWith($user); // 是否与某用户互关
+
+// 关联和统计
+$post->userFollowers();             // MorphToMany，粉丝列表（仅 User 类型）
+$post->followersCount();            // 粉丝数量
+$post->follows();                   // MorphMany 关联（type='follow'）
+```
+
+#### Likeable（被点赞）
+
+`Wsmallnews\Preference\Models\Concerns\Preferenceable\Likeable`：
+
+```php
+use Wsmallnews\Preference\Models\Concerns\Preferenceable\Likeable;
+
+// 状态查询
+$post->isLikedBy($user);        // 是否被某用户点赞
+
+// 关联
+$post->userLikers();            // MorphToMany，点赞用户列表（仅 User 类型）
+$post->likes();                 // MorphMany 关联（type='like'）
+```
+
+#### Viewable（被浏览）
+
+`Wsmallnews\Preference\Models\Concerns\Preferenceable\Viewable`：
+
+```php
+use Wsmallnews\Preference\Models\Concerns\Preferenceable\Viewable;
+
+$post->view($user);             // 记录浏览（$user 为 null 时只增加计数不记录）
+$post->isViewedBy($user);       // 是否被某用户浏览过
+$post->userViewers();           // MorphToMany，浏览用户列表（仅 User 类型）
+$post->views();                 // MorphMany 关联（type='view'）
+```
+
+### Preference 模型
+
+`Wsmallnews\Preference\Models\Preference`（可通过 `config('sn-preference.models.preference')` 替换）。
+
+表 `sn_preferences` 关键字段：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | bigint | 主键 |
+| `team_id` | bigint, nullable | 多租户 |
+| `scope_type` | string, nullable | 作用域类型 |
+| `scope_id` | bigint, default 0 | 作用域 ID（0 = 全局） |
+| `type` | string | 偏好类型：`'follow'`、`'like'`、`'view'` |
+| `preferencer_type` | string | 操作者多态类型 |
+| `preferencer_id` | bigint | 操作者多态 ID |
+| `preferenceable_type` | string | 目标多态类型 |
+| `preferenceable_id` | bigint | 目标多态 ID |
+| `options` | json | 额外数据（互关时存 `followed_at` 等） |
+| `created_at` / `updated_at` / `deleted_at` | timestamps | 软删除 |
+
+**查询作用域：**
+
+```php
+Preference::withType('follow')              // 按 type 筛选
+    ->withPreferencer($user)                // 按操作者筛选
+    ->withPreferenceable($post)             // 按目标筛选
+    ->withPreferenceType($postOrClass);     // 按目标类型筛选
+```
+
+### Livewire 组件
+
+#### 前端组件（带管理功能）
+
+三个组件均继承 `Wsmallnews\Preference\Livewire\Components\Base`（→ `Wsmallnews\Support\Livewire\Base`，使用 `Scopeable` trait）：
+
+| 组件 | 注册名 | 功能 |
+|---|---|---|
+| `Livewire\Components\Follows` | `sn-preference-components-follows` | 关注列表，支持取消关注和批量操作 |
+| `Livewire\Components\Likes` | `sn-preference-components-likes` | 点赞列表，支持取消点赞和批量操作 |
+| `Livewire\Components\Views` | `sn-preference-components-views` | 浏览列表，支持删除和批量删除 |
+
+**通用属性和特性：**
+
+- `$preferencer` / `$preferenceable` / `$listType`（`'preferencer'`、`'preferenceable'`、默认全部）
+- 均使用 `CanPagination`（**已包含 `WithPagination`，不要重复 use**）、`HasAuth`、`HasProperties`、`CanBeContained`、`CanManage`
+- 管理模式下支持单选/全选和批量操作
+
+**使用示例：**
+
+```blade
+{{-- 显示某用户的所有关注 --}}
+<livewire:sn-preference-components-follows
+    :preferencer="$user"
+    list-type="preferencer"
+    :can-manage="true"
+/>
+
+{{-- 显示某文章的所有点赞用户 --}}
+<livewire:sn-preference-components-likes
+    :preferenceable="$post"
+    list-type="preferenceable"
+/>
+```
+
+#### Filament 面板组件（只读）
+
+| 组件 | 注册名 |
+|---|---|
+| `Filament\Pages\Preference\Components\Follows` | `sn-preference-fi-follows` |
+| `Filament\Pages\Preference\Components\Likes` | `sn-preference-fi-likes` |
+| `Filament\Pages\Preference\Components\Views` | `sn-preference-fi-views` |
+
+这三个组件无管理功能，用于 Filament 面板页面中嵌入展示。
+
+#### Filament Widget 包装器
+
+`Wsmallnews\Preference\Filament\Pages\Preference\Widgets\` 下的 `Follows`、`Likes`、`Views`，接受 `$record` 和 `$widgetType`（`'preferenceable'` 或 `'preferencer'`），内部渲染对应的 Filament 面板组件。
+
+```blade
+{{-- 在 Filament 页面中使用 --}}
+<x-filament-widgets::widgets>
+    @foreach ($widgets as $widget)
+        {{ $this->makeFilamentWidget($widget) }}
+    @endforeach
+</x-filament-widgets::widgets>
+```
+
+### 配置
+
+`config/sn-preference.php`：
+
+```php
+return [
+    'scopeable' => [
+        'scope_type' => 'sn-preference',  // 默认作用域类型
+        'scope_id' => 0,                  // 0 = 全局
+    ],
+    'models' => [
+        'preference' => Models\Preference::class,  // 可替换模型
+    ],
+    'file_directory' => 'sn/preference/',  // 文件存储目录
+];
+```
+
+### Utils 工具类
+
+`Wsmallnews\Preference\Support\Utils` — 全部为静态方法：
+
+| 方法 | 说明 |
+|---|---|
+| `getConfig(?string $name, $default)` | 读取 `sn-preference` 配置（dot notation） |
+| `getScopeableContext()` | 从配置创建 ScopeableContext 值对象 |
+| `getScopeable()` | 返回 `['scope_type' => '...', 'scope_id' => 0]` |
+| `getScopeType()` | 获取默认 scope_type |
+| `getScopeId()` | 获取默认 scope_id |
+| `getModel(string $name, bool $shouldException = true)` | 获取配置的模型类名，`false` 时不抛异常 |
+| `getPreferenceModel()` | `getModel('preference')` 快捷方式 |
+| `getFileDirectory(?string $type)` | 获取文件目录（自动追加日期），如 `sn/preference/image/20260527` |
+
+### 正确命名空间速查
+
+| 类别 | 命名空间 |
+|---|---|
+| Preference 模型 | `Wsmallnews\Preference\Models\Preference` |
+| 操作者侧 traits | `Wsmallnews\Preference\Models\Concerns\Preferencer\` |
+| 目标侧 traits | `Wsmallnews\Preference\Models\Concerns\Preferenceable\` |
+| Livewire 组件 | `Wsmallnews\Preference\Livewire\Components\` |
+| Livewire Base | `Wsmallnews\Preference\Livewire\Components\Base` |
+| Livewire Traits | `Wsmallnews\Preference\Livewire\Concerns\` |
+| Filament 页面组件 | `Wsmallnews\Preference\Filament\Pages\Preference\Components\` |
+| Filament 挂件 | `Wsmallnews\Preference\Filament\Pages\Preference\Widgets\` |
+| Utils | `Wsmallnews\Preference\Support\Utils` |
+| Facade | `Wsmallnews\Preference\Facades\Preference` |
+| 异常 | `Wsmallnews\Preference\Exceptions\` |
+
+### 常见错误
+
+- **preferencer 模型必须实现 `HasSnIdentifiable` 接口**，否则 Blade 组件渲染会失败。User 模型可直接 use `UserIdentifiable` trait。
+- **preferenceable 模型必须实现 `HasSnSubject` 接口**，否则 Blade 组件渲染会失败。`HasSnSubject` 没有默认 trait，需自行实现全部 5 个方法。
+- **`getSnHrefUrl()` 和 `getSnSubjectHrefUrl()` 返回 `null` 时不显示跳转链接**，点击会分发 Livewire 事件。如需跳转，请返回有效的 URL 字符串。
+- **`isLink` 已改名为 `hasLink`**，旧属性名不再有效，使用 `isLink` 的代码需更新。
+- **`CanPagination` 已包含 `WithPagination`**，不要在 Livewire 组件中重复 `use WithPagination`。
+- **counter 字段使用 JSON 格式**，模型中需配合 support 包的 `CounterCast` 使用：`'counter' => CounterCast::class`。
+- **`scope_id = 0` 表示全局作用域**，不要用 `where('scope_id', 0)` 直接查询——使用模型 trait 提供的 `scopeScopeId(0)`，它内部使用 `whereIn`。
+- **preferenceable 模型必须 use 对应的 Preferenceable trait**（如 `Followable`），否则 preferencer 侧操作会抛出 `InvalidArgumentException`。
+- **`Follower::follow()` 不允许关注自己**，会抛出 `InvalidArgumentException('Cannot follow yourself.')`。
+- **`Utils` 所有方法都是静态的**，使用 `Utils::getConfig()` 而非 `(new Utils)->getConfig()`。
+- **`Utils::getModel()` 默认会抛异常**，传递 `false` 作为第二个参数以允许返回 `null`。
+
 === wsmallnews/support rules ===
 
 ## Support Package（wsmallnews/support）
@@ -515,6 +838,80 @@ Filament Resources 使用 `HasScopeableProperties` concern：
 - `Wsmallnews\Support\Filament\Resources\Concerns\Scopeable` — Resource 级别的 `applyScopeableToQuery()` 自动对 Eloquent 查询应用 scope 过滤
 - `Wsmallnews\Support\Filament\Pages\Concerns\Scopeable` — Page 级别的 scope 支持
 
+### SN 身份与实体接口
+
+为 preference 等扩展包提供统一的"操作者"（谁）和"目标实体"（什么）数据抽象。Blade 组件通过这两个接口获取展示数据和跳转链接。
+
+#### HasSnIdentifiable（身份/操作者接口）
+
+`Wsmallnews\Support\Contracts\HasSnIdentifiable` — 操作者侧（用户）的标准接口，preferencer 模型必须实现：
+
+```php
+use Wsmallnews\Support\Contracts\HasSnIdentifiable;
+use Illuminate\Support\HtmlString;
+
+// 接口方法：
+getSnId(): int;                                          // 操作者 ID
+getSnName(): string | HtmlString | null;                 // 操作者名称
+getSnAvatarUrl(): string | HtmlString | null;            // 头像 URL
+getSnEmail(): string | HtmlString | null;                // 邮箱
+getSnHrefUrl(): string | HtmlString | null;              // 详情页跳转链接
+```
+
+#### UserIdentifiable trait
+
+`Wsmallnews\Support\Concerns\UserIdentifiable` 为 `HasSnIdentifiable` 提供基于 Eloquent 属性的默认实现，自动映射 `$this->id`、`$this->name`、`$this->avatar_url`、`$this->email`。`getSnHrefUrl()` 默认返回 `null`：
+
+```php
+use Wsmallnews\Support\Contracts\HasSnIdentifiable;
+use Wsmallnews\Support\Concerns\UserIdentifiable;
+
+class User extends Authenticatable implements HasSnIdentifiable
+{
+    use UserIdentifiable;
+}
+```
+
+#### HasSnSubject（实体/目标接口）
+
+`Wsmallnews\Support\Contracts\HasSnSubject` — 目标侧（内容实体）的标准接口，preferenceable 模型必须实现：
+
+```php
+use Wsmallnews\Support\Contracts\HasSnSubject;
+use Illuminate\Support\HtmlString;
+
+// 接口方法：
+getSnSubjectId(): int;                                   // 实体 ID
+getSnSubjectTitle(): string | HtmlString | null;          // 标题
+getSnSubjectDescription(): string | HtmlString | null;    // 描述
+getSnSubjectCoverUrl(): string | HtmlString | null;       // 封面图 URL
+getSnSubjectHrefUrl(): string | HtmlString | null;        // 详情页跳转链接
+```
+
+`HasSnSubject` 没有默认 trait，每个实现类需自行实现所有方法：
+
+```php
+use Wsmallnews\Support\Contracts\HasSnSubject;
+
+class Post extends SupportModel implements HasSnSubject
+{
+    public function getSnSubjectId(): int { return $this->id; }
+    public function getSnSubjectTitle(): string | HtmlString | null { return $this->title; }
+    public function getSnSubjectDescription(): string | HtmlString | null { return $this->description; }
+    public function getSnSubjectCoverUrl(): string | HtmlString | null { return $this->getFirstMediaUrl('post_image'); }
+    public function getSnSubjectHrefUrl(): string | HtmlString | null { return null; }
+}
+```
+
+#### 接口对比
+
+| 接口 | 用途 | 对应 trait | href 方法 |
+|---|---|---|---|
+| `HasSnIdentifiable` | 操作者/用户 | `UserIdentifiable` | `getSnHrefUrl()` |
+| `HasSnSubject` | 目标/内容实体 | 无默认 trait | `getSnSubjectHrefUrl()` |
+
+两个接口的 href 方法返回非空 URL 时，preference 等包的 Blade 组件会渲染为可点击的 `<a>` 标签；返回 `null` 时点击会分发 Livewire 事件。
+
 ### 自定义表单字段
 
 <code-snippet name="BoxRepeater 用法" lang="php">
@@ -576,6 +973,7 @@ class ActivityLogResource extends BaseResource
 
 - `Wsmallnews\Support\Contracts\ActivityLogs\HasActivityLogTitle` — 自定义日志标题
 - `Wsmallnews\Support\Contracts\ActivityLogs\HasActivityLogUrl` — 自定义查看链接
+- `Wsmallnews\Support\Contracts\HasModelLabel` — 自定义模型标签（`static getModelLabel(): string`），用于活动日志类型下拉选项的标签解析
 
 ### Tags 资源
 
@@ -619,6 +1017,71 @@ $this->halt($shouldRollbackDatabaseTransaction: true);
 | `Scopeable` | `#[Locked]` `$scopeType`/`$scopeId`，`getScopeable()` |
 
 **注意：** `CanPagination` 已经 use 了 Livewire 的 `WithPagination`，**不要再单独 use `WithPagination`**。
+
+#### HasColumns（响应式列配置）
+
+`Wsmallnews\Support\Concerns\HasColumns` 提供响应式断点列配置：
+
+```php
+use Wsmallnews\Support\Concerns\HasColumns;
+
+// 设置列数
+$this->columns(2);                        // 所有断点默认 2 列
+$this->columns(['default' => 1, 'lg' => 3]); // 按断点设置
+
+// 获取列配置
+$this->getColumns();       // 获取完整配置数组
+$this->getColumns('lg');   // 获取指定断点的列数
+$this->getColumnsConfig(); // 获取带默认值的完整配置
+```
+
+#### 自定义属性（HasCustomProperties）
+
+**Plugin 层** — `Wsmallnews\Support\Concerns\Plugin\HasCustomProperties`：
+
+```php
+// 在插件中设置自定义属性
+$plugin->customProperties([
+    'table' => fn (Table $table, string $resource) => $table,
+    'form' => fn (Schema $schema, string $resource) => $schema,
+    'scopeable' => ['scopeType' => 'post', 'scopeId' => 0],
+]);
+
+// 读取
+$plugin->getCustomProperties($resourceClass);
+```
+
+**Resource 层** — `Wsmallnews\Support\Concerns\Resource\HasCustomProperties`：委托到插件层，提供快捷方法：
+
+```php
+// 快捷获取自定义的 table/form/infolist
+static::getCustomTable($table);           // 返回 ?Table
+static::getCustomForm($schema);           // 返回 ?Schema
+static::getCustomFormArray($arguments);   // 返回 ?array
+static::getCustomInfolist($schema);       // 返回 ?Schema
+static::getCustomInfolistArray();         // 返回 ?array
+
+// scopeable 相关
+static::getCustomScopeable();             // 返回 ?array
+static::getCustomScopeType();             // 返回 ?string
+static::getCustomScopeId();               // 返回 ?int
+static::getCustomProperty('key');         // 获取单个属性
+```
+
+#### HasMediaFilter（媒体筛选）
+
+`Wsmallnews\Support\Filament\Concerns\HasMediaFilter` 用于自定义媒体集合的筛选逻辑：
+
+```php
+use Wsmallnews\Support\Filament\Concerns\HasMediaFilter;
+
+$this->filterMediaUsing(function (Collection $media): Collection {
+    return $media->filter(fn ($item) => $item->getCustomProperty('featured'));
+});
+
+$this->filterMedia($media);  // 应用筛选
+$this->hasMediaFilter();     // 检查是否设置了筛选回调
+```
 
 ### 多租户
 
@@ -717,7 +1180,13 @@ $rocket->getPayloads(); // Collection
 | Casts | `Wsmallnews\Support\Casts\` |
 | Enums | `Wsmallnews\Support\Enums\` |
 | Data 对象 | `Wsmallnews\Support\Data\` |
-| Contracts | `Wsmallnews\Support\Contracts\` |
+| Contracts（接口） | `Wsmallnews\Support\Contracts\` |
+| Contracts - 活动日志 | `Wsmallnews\Support\Contracts\ActivityLogs\` |
+| 通用 Traits | `Wsmallnews\Support\Concerns\` |
+| Plugin 自定义属性 | `Wsmallnews\Support\Concerns\Plugin\` |
+| Resource 自定义属性 | `Wsmallnews\Support\Concerns\Resource\` |
+| 安装工具 | `Wsmallnews\Support\Concerns\Install\` |
+| Filament 通用 | `Wsmallnews\Support\Filament\Concerns\` |
 | Utils | `Wsmallnews\Support\Support\Utils` |
 | Facade | `Wsmallnews\Support\Facades\Support` |
 | 中间件 | `Wsmallnews\Support\Http\Middleware\` |

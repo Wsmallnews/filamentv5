@@ -9,6 +9,7 @@
     "packages": [
         "filament/filament",
         "fruitcake/laravel-debugbar",
+        "wsmallnews/preference",
         "wsmallnews/support"
     ],
     "sail": false,
