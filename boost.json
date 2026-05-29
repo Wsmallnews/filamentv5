@@ -10,7 +10,8 @@
         "filament/filament",
         "fruitcake/laravel-debugbar",
         "wsmallnews/preference",
-        "wsmallnews/support"
+        "wsmallnews/support",
+        "wsmallnews/filament-nestedset"
     ],
     "sail": false,
     "skills": [

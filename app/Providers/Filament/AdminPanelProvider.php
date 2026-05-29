@@ -23,6 +23,7 @@ use Wsmallnews\Cms\Filament\Pages\Navigation;
 use Wsmallnews\Cms\Filament\Pages\Category as CategoryPage;
 use Wsmallnews\Cms\Filament\Pages\GeneralSetting as GeneralSettingPage;
 use Wsmallnews\Cms\Filament\Resources\Posts\PostResource;
+use Wsmallnews\Category\CategoryPlugin;
 use Wsmallnews\Comment\CommentPlugin;
 use Wsmallnews\Comment\Filament\Pages\Comment\CommentPage;
 
@@ -52,6 +53,7 @@ class AdminPanelProvider extends PanelProvider
                 FilamentInfoWidget::class,
             ])
             ->plugins([
+                CategoryPlugin::make(),
                 CommentPlugin::make()
                     ->forResource(CommentPage::class)
                     ->navigationGroup('网站管理')
