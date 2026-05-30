@@ -1,7 +1,5 @@
 {
-    "agents": [
-        "claude_code"
-    ],
+    "agents": ["claude_code"],
     "cloud": false,
     "guidelines": true,
     "mcp": true,
@@ -11,7 +9,8 @@
         "fruitcake/laravel-debugbar",
         "wsmallnews/preference",
         "wsmallnews/support",
-        "wsmallnews/filament-nestedset"
+        "wsmallnews/filament-nestedset",
+        "wsmallnews/comment"
     ],
     "sail": false,
     "skills": [

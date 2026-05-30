@@ -18,12 +18,12 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Wsmallnews\Category\CategoryPlugin;
 use Wsmallnews\Cms\CmsPlugin;
-use Wsmallnews\Cms\Filament\Pages\Navigation;
 use Wsmallnews\Cms\Filament\Pages\Category as CategoryPage;
 use Wsmallnews\Cms\Filament\Pages\GeneralSetting as GeneralSettingPage;
+use Wsmallnews\Cms\Filament\Pages\Navigation;
 use Wsmallnews\Cms\Filament\Resources\Posts\PostResource;
-use Wsmallnews\Category\CategoryPlugin;
 use Wsmallnews\Comment\CommentPlugin;
 use Wsmallnews\Comment\Filament\Pages\Comment\CommentPage;
 
