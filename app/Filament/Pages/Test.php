@@ -2,20 +2,21 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Navigation;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
-use Kalnoy\Nestedset\QueryBuilder;
-use Wsmallnews\FilamentNestedset\Pages\NestedsetPage;
+use Wsmallnews\FilamentNestedset\Filament\Pages\NestedsetPage;
 
 class Test extends NestedsetPage
 {
+    protected static ?int $level = 2;
 
-    protected static ?string $model = \App\Models\Navigation::class;
+    protected static ?string $model = Navigation::class;
 
     protected static string $recordTitleAttribute = 'name';
 
-    protected function schema(array $arguments): array
+    public function schema(array $arguments): array
     {
         return [
             Select::make('type')
@@ -27,20 +28,19 @@ class Test extends NestedsetPage
                 ->default('route')
                 ->required(),
             TextInput::make('name')->label('Route Name')
-                ->required(fn(Get $get) => $get('type') === 'route')
+                ->required(fn (Get $get) => $get('type') === 'route')
                 ->markAsRequired()
                 ->visibleJs(<<<'JS'
                         $get('type') == 'route'
                     JS),
             TextInput::make('description')->label('Description')
-                ->required(fn(Get $get) => $get('type') === 'action')
+                ->required(fn (Get $get) => $get('type') === 'action')
                 ->markAsRequired()
                 ->visibleJs(<<<'JS'
                         $get('type') == 'action'
                     JS),
         ];
     }
-
 
     public function infolistSchema(): array
     {

@@ -43,7 +43,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Tests\\": "tests/"
+            "Tests\\": "tests/",
+            "Wsmallnews\\FilamentNestedset\\Tests\\": "addons/filament-nestedset/tests/"
         }
     },
     "scripts": {
