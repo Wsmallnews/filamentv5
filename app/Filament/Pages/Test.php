@@ -16,7 +16,7 @@ class Test extends NestedsetPage
 
     protected static string $recordTitleAttribute = 'name';
 
-    public static function schema(array $arguments): array
+    public function schema(array $arguments): array
     {
         return [
             Select::make('type')
@@ -42,7 +42,7 @@ class Test extends NestedsetPage
         ];
     }
 
-    public static function infolistSchema(): array
+    public function infolistSchema(): array
     {
         return [
             //
