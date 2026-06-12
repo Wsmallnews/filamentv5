@@ -1,5 +1,7 @@
 {
-    "agents": ["claude_code"],
+    "agents": [
+        "claude_code"
+    ],
     "cloud": false,
     "guidelines": true,
     "mcp": true,
@@ -10,7 +12,9 @@
         "wsmallnews/preference",
         "wsmallnews/support",
         "wsmallnews/filament-nestedset",
-        "wsmallnews/comment"
+        "wsmallnews/comment",
+        "wsmallnews/category",
+        "wsmallnews/cms"
     ],
     "sail": false,
     "skills": [

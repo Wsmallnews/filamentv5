@@ -5,16 +5,51 @@ namespace App\Filament\Pages;
 use App\Models\Navigation;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 use Wsmallnews\FilamentNestedset\Filament\Pages\NestedsetPage;
 
 class Test extends NestedsetPage
 {
-    protected static ?int $level = 2;
+    protected static ?int $level = 3;
 
     protected static ?string $model = Navigation::class;
 
     protected static string $recordTitleAttribute = 'name';
+
+    protected static bool $isScopedToTenant = false;
+
+    protected static ?string $tabFieldName = 'type';
+
+    protected static Alignment $infolistAlignment = Alignment::Right;
+
+    public function getTabs(): array
+    {
+        return [
+            'route' => Tab::make('Route')
+                ->icon(Heroicon::MapPin),
+            'action' => Tab::make('Action')
+                ->icon(Heroicon::Bolt),
+        ];
+    }
+
+    protected function nestedScoped(): array
+    {
+        return [
+            'status' => 'active',
+        ];
+    }
+
+    protected function getRecordLabel(Model $record): HtmlString|string
+    {
+        $icon = $record->type === 'route' ? '📍' : '⚡';
+
+        return new HtmlString("{$icon} {$record->name}");
+    }
 
     public function schema(array $arguments): array
     {
@@ -27,25 +62,46 @@ class Test extends NestedsetPage
                 ])
                 ->default('route')
                 ->required(),
-            TextInput::make('name')->label('Route Name')
-                ->required(fn (Get $get) => $get('type') === 'route')
-                ->markAsRequired()
-                ->visibleJs(<<<'JS'
-                        $get('type') == 'route'
-                    JS),
-            TextInput::make('description')->label('Description')
-                ->required(fn (Get $get) => $get('type') === 'action')
-                ->markAsRequired()
-                ->visibleJs(<<<'JS'
-                        $get('type') == 'action'
-                    JS),
+            TextInput::make('name')
+                ->label('Name')
+                ->required()
+                ->markAsRequired(),
+            TextInput::make('description')
+                ->label('Description'),
+            Select::make('status')
+                ->label('Status')
+                ->options([
+                    'active' => 'Active',
+                    'inactive' => 'Inactive',
+                ])
+                ->default('active')
+                ->required(),
         ];
     }
 
     public function infolistSchema(): array
     {
         return [
-            //
+            TextEntry::make('type')
+                ->label('Type')
+                ->badge()
+                ->color(fn (string $state): string => match ($state) {
+                    'route' => 'info',
+                    'action' => 'warning',
+                    default => 'gray',
+                }),
+            // TextEntry::make('name')
+            //     ->label('Name'),
+            // TextEntry::make('description')
+            //     ->label('Description'),
+            TextEntry::make('status')
+                ->label('Status')
+                ->badge()
+                ->color(fn (string $state): string => match ($state) {
+                    'active' => 'success',
+                    'inactive' => 'gray',
+                    default => 'gray',
+                }),
         ];
     }
 }

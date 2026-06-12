@@ -11,10 +11,15 @@ class Navigation extends Model
 
     protected $table = 'navigations';
 
-
     protected $fillable = [
         'type',
         'name',
         'description',
+        'status',
     ];
+
+    public function getScopeAttributes(): array
+    {
+        return ['type', 'status'];
+    }
 }

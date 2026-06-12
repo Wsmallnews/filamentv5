@@ -22,7 +22,7 @@ use Wsmallnews\Category\CategoryPlugin;
 use Wsmallnews\Cms\CmsPlugin;
 use Wsmallnews\Cms\Filament\Pages\Category as CategoryPage;
 use Wsmallnews\Cms\Filament\Pages\GeneralSetting as GeneralSettingPage;
-use Wsmallnews\Cms\Filament\Pages\Navigation;
+use Wsmallnews\Cms\Filament\Pages\Navigation\NavigationPage;
 use Wsmallnews\Cms\Filament\Resources\Posts\PostResource;
 use Wsmallnews\Comment\CommentPlugin;
 use Wsmallnews\Comment\Filament\Pages\Comment\CommentPage;
@@ -54,16 +54,17 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 CategoryPlugin::make(),
-                CommentPlugin::make()
-                    ->forResource(CommentPage::class)
-                    ->navigationGroup('网站管理')
-                    ->navigationLabel('评论管理'),
+                // CommentPlugin::make()
+                //     ->forResource(CommentPage::class)
+                //     ->navigationGroup('网站管理')
+                //     ->navigationLabel('评论管理'),
                 CmsPlugin::make()
-                    ->forResource(Navigation::class)
+                    ->forResource(NavigationPage::class)
                     ->navigationGroup('网站管理')
                     ->navigationLabel('导航管理')
                     ->customProperties([
                         'emptyLabel' => '呀，怎么没数据呀！',
+                        'canManage' => false,
                         'level' => 3,
                     ])
                     ->forResource(PostResource::class)
@@ -90,6 +91,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->sidebarCollapsibleOnDesktop();
     }
 }
