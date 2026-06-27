@@ -26,6 +26,7 @@ use Wsmallnews\Cms\Filament\Pages\Navigation\NavigationPage;
 use Wsmallnews\Cms\Filament\Resources\Posts\PostResource;
 use Wsmallnews\Comment\CommentPlugin;
 use Wsmallnews\Comment\Filament\Pages\Comment\CommentPage;
+use Wsmallnews\Comment\Filament\Resources\Comments\CommentResource;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -54,10 +55,14 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 CategoryPlugin::make(),
-                // CommentPlugin::make()
-                //     ->forResource(CommentPage::class)
-                //     ->navigationGroup('网站管理')
-                //     ->navigationLabel('评论管理'),
+                CommentPlugin::make()
+                    ->forResource(CommentPage::class)
+                    ->navigationGroup('网站管理')
+                    ->navigationLabel('评论页管理')
+                    ->forResource(CommentResource::class)
+                    ->navigationGroup('网站管理')
+                    ->navigationLabel('评论管理')
+                    ,
                 CmsPlugin::make()
                     ->forResource(NavigationPage::class)
                     ->navigationGroup('网站管理')
