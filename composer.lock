@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "96e9171a047ae6169089dd0963565414",
+    "content-hash": "44951dbe2a03464b3bf422c66d0bd1b1",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -5200,6 +5200,80 @@
             "time": "2025-09-24T15:06:41+00:00"
         },
         {
+            "name": "phiki/phiki",
+            "version": "v2.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/phikiphp/phiki.git",
+                "reference": "24375dbc474dbc484de7d53c6bab0bb9e198f647"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phikiphp/phiki/zipball/24375dbc474dbc484de7d53c6bab0bb9e198f647",
+                "reference": "24375dbc474dbc484de7d53c6bab0bb9e198f647",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": "^8.2",
+                "psr/simple-cache": "^3.0"
+            },
+            "require-dev": {
+                "illuminate/support": "^11.45",
+                "laravel/pint": "^1.18.1",
+                "league/commonmark": "^2.5.3",
+                "orchestra/testbench": "^9.15",
+                "pestphp/pest": "^3.5.1",
+                "phpstan/extension-installer": "^1.4.3",
+                "phpstan/phpstan": "^2.0",
+                "symfony/var-dumper": "^7.1.6"
+            },
+            "suggest": {
+                "league/commonmark": "Required to use the CommonMark adapter (^2.5.3)"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Phiki\\Adapters\\Laravel\\PhikiServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Phiki\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ryan Chandler",
+                    "email": "support@ryangjchandler.co.uk",
+                    "homepage": "https://ryangjchandler.co.uk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Syntax highlighting using TextMate grammars in PHP.",
+            "support": {
+                "issues": "https://github.com/phikiphp/phiki/issues",
+                "source": "https://github.com/phikiphp/phiki/tree/v2.2.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/sponsors/ryangjchandler",
+                    "type": "github"
+                },
+                {
+                    "url": "https://buymeacoffee.com/ryangjchandler",
+                    "type": "other"
+                }
+            ],
+            "time": "2026-04-01T15:56:08+00:00"
+        },
+        {
             "name": "phpdocumentor/reflection-common",
             "version": "2.2.0",
             "source": {
@@ -10331,7 +10405,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/category",
-                "reference": "943f72e1019dd7af22f847ec496d3afea0c51cea"
+                "reference": "fcb716668a5bd7897b2d3931bca44ae96401f2ac"
             },
             "require": {
                 "bezhansalleh/filament-plugin-essentials": "^1.0",
@@ -10418,7 +10492,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/cms",
-                "reference": "12179c6eb9e3eb188980c6e5bea10318823cfcf0"
+                "reference": "814a119a4c9deb0d2ae617831624057690025fa9"
             },
             "require": {
                 "bezhansalleh/filament-plugin-essentials": "^1.0",
@@ -10511,7 +10585,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/comment",
-                "reference": "541857ad7aa0ad1c295457979f28ae354795dfc3"
+                "reference": "6bc5b59c8a42cf93cf5ec0d5bc1c15d8e3e62ce5"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -10693,7 +10767,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/preference",
-                "reference": "4890d96d08be30d4dcafc96afcf265fe900b5736"
+                "reference": "d3ea725a3557c8e1b537f92fb48b3eab41b6c558"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -10792,7 +10866,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/support",
-                "reference": "6188b43fb46d878e32f174882242ce60e7f384c1"
+                "reference": "f540256f2559e6292280d9ea733d167dc87acba5"
             },
             "require": {
                 "bezhansalleh/filament-plugin-essentials": "^1.0",
@@ -10895,7 +10969,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/user",
-                "reference": "6564dbea5848fb3923336d7593504414df981154"
+                "reference": "d6d411e491dea9495cbb447283dfff1ec25fcfbf"
             },
             "require": {
                 "bacon/bacon-qr-code": "^3.0",
