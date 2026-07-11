@@ -133,7 +133,7 @@ return [
             /**
              * 评论内容类型
              */
-            'content_type' => ContentType::Textarea,
+            'content_type' => ContentType::Richtext,
             /**
              * 默认评论状态
              */

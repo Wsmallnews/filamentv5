@@ -62,7 +62,11 @@ class AdminPanelProvider extends PanelProvider
                     ->forResource(CommentResource::class)
                     ->navigationGroup('网站管理')
                     ->navigationLabel('评论管理')
-                    ,
+                    ->customProperties([
+                        'scopeable' => [
+                            'scopeType' => 'sn-cms',
+                        ],
+                    ]),
                 CmsPlugin::make()
                     ->forResource(NavigationPage::class)
                     ->navigationGroup('网站管理')
