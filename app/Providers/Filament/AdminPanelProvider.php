@@ -19,14 +19,9 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Wsmallnews\Category\CategoryPlugin;
+use Wsmallnews\Category\Filament\Resources\CategoryTypes\CategoryTypeResource;
 use Wsmallnews\Cms\CmsPlugin;
-use Wsmallnews\Cms\Filament\Pages\Category as CategoryPage;
-use Wsmallnews\Cms\Filament\Pages\GeneralSetting as GeneralSettingPage;
-use Wsmallnews\Cms\Filament\Pages\Navigation\NavigationPage;
-use Wsmallnews\Cms\Filament\Resources\Posts\PostResource;
 use Wsmallnews\Comment\CommentPlugin;
-use Wsmallnews\Comment\Filament\Pages\Comment\CommentPage;
-use Wsmallnews\Comment\Filament\Resources\Comments\CommentResource;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -55,37 +50,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 CategoryPlugin::make(),
-                CommentPlugin::make()
-                    ->forResource(CommentPage::class)
-                    ->navigationGroup('网站管理')
-                    ->navigationLabel('评论页管理')
-                    ->forResource(CommentResource::class)
-                    ->navigationGroup('网站管理')
-                    ->navigationLabel('评论管理')
-                    ->customProperties([
-                        'scopeable' => [
-                            'scopeType' => 'sn-cms',
-                        ],
-                    ]),
-                CmsPlugin::make()
-                    ->forResource(NavigationPage::class)
-                    ->navigationGroup('网站管理')
-                    ->navigationLabel('导航管理')
-                    ->customProperties([
-                        'emptyLabel' => '呀，怎么没数据呀！',
-                        'canManage' => false,
-                        'level' => 3,
-                    ])
-                    ->forResource(PostResource::class)
-                    ->navigationGroup('网站管理')
-                    ->navigationLabel('图文管理')
-                    ->forResource(CategoryPage::class)
-                    ->navigationGroup('网站管理')
-                    ->navigationParentItem('图文管理')
-                    ->navigationLabel('图文分类')
-                    ->forResource(GeneralSettingPage::class)
-                    ->navigationGroup('网站管理')
-                    ->navigationLabel('网站设置'),
+                CmsPlugin::make(),
+                CommentPlugin::make(),
             ])
             ->middleware([
                 EncryptCookies::class,
