@@ -19,6 +19,7 @@
         "wsmallnews/cms": "v1.x-dev",
         "wsmallnews/comment": "v1.x-dev",
         "wsmallnews/filament-nestedset": "^3.x-dev",
+        "wsmallnews/member": "v1.x-dev",
         "wsmallnews/preference": "v1.x-dev",
         "wsmallnews/support": "v1.x-dev",
         "wsmallnews/user": "v1.x-dev"
@@ -118,6 +119,10 @@
         "filament-nestedset": {
             "type": "path",
             "url": "./addons/filament-nestedset"
+        },
+        "member": {
+            "type": "path",
+            "url": "./addons/member"
         },
         "preference": {
             "type": "path",
