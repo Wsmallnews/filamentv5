@@ -31,6 +31,7 @@ use Wsmallnews\Support\Concerns\UserIdentifiable;
 use Wsmallnews\Support\Contracts\HasSnIdentifiable;
 use Wsmallnews\User\Models\Concerns\TwoFactorAuthenticatable;
 use Wsmallnews\User\Userable;
+use Wsmallnews\User\Enums\Status;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -68,6 +69,7 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'status' => Status::class
         ];
     }
 

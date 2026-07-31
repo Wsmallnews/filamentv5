@@ -22,6 +22,7 @@ use Wsmallnews\Category\CategoryPlugin;
 use Wsmallnews\Cms\CmsPlugin;
 use Wsmallnews\Comment\CommentPlugin;
 use Wsmallnews\Member\MemberPlugin;
+use Wsmallnews\User\UserPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -52,6 +53,7 @@ class AdminPanelProvider extends PanelProvider
                 CategoryPlugin::make(),
                 CmsPlugin::make(),
                 MemberPlugin::make(),
+                UserPlugin::make(),
                 CommentPlugin::make(),
             ])
             ->middleware([
