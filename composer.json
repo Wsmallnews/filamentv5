@@ -21,6 +21,7 @@
         "wsmallnews/filament-nestedset": "^3.x-dev",
         "wsmallnews/member": "v1.x-dev",
         "wsmallnews/preference": "v1.x-dev",
+        "wsmallnews/product": "v1.x-dev",
         "wsmallnews/support": "v1.x-dev",
         "wsmallnews/user": "v1.x-dev"
     },
@@ -127,6 +128,10 @@
         "preference": {
             "type": "path",
             "url": "./addons/preference"
+        },
+        "product": {
+            "type": "path",
+            "url": "./addons/product"
         },
         "support": {
             "type": "path",
