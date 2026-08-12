@@ -23,6 +23,8 @@ use Wsmallnews\Cms\CmsPlugin;
 use Wsmallnews\Comment\CommentPlugin;
 use Wsmallnews\Member\MemberPlugin;
 use Wsmallnews\Product\ProductPlugin;
+use Wsmallnews\Support\Filament\Resources\ActivityLogs\ActivityLogResource;
+use Wsmallnews\Support\Filament\Resources\ScheduledTasks\ScheduledTaskResource;
 use Wsmallnews\User\UserPlugin;
 
 class AdminPanelProvider extends PanelProvider
@@ -49,6 +51,10 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,
+            ])
+            ->resources([
+                ActivityLogResource::class,
+                ScheduledTaskResource::class,
             ])
             ->plugins([
                 CategoryPlugin::make(),
