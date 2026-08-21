@@ -12,5 +12,8 @@
 /* wsmallnews/cms */
 @import "../../../../vendor/wsmallnews/cms/resources/css/index.css";
 
+/* wsmallnews/product */
+@import "../../../../vendor/wsmallnews/product/resources/css/index.css";
+
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';

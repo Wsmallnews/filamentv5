@@ -64,7 +64,7 @@ return [
     /**
      * auth guard
      */
-    'guard' => 'admin',
+    'guard' => 'web',
 
     /**
      * auth_user_type
@@ -99,6 +99,21 @@ return [
      * 文件基础目录，会自动拼接当前年月日 (仅用于 filament 默认上传组件 (Forms\Components\FileUpload))
      */
     'file_directory' => 'sn/cms/',
+
+    /**
+     * 内容表单配置（FormComponents::contentTypeGroup）
+     * types: 允许的内容类型；default_type: 默认内容类型
+     */
+    'contents' => [
+        'post' => [
+            'types' => null,
+            'default_type' => ContentType::Richtext,
+        ],
+        'navigation' => [
+            'types' => null,
+            'default_type' => ContentType::Markdown,
+        ],
+    ],
 
     'routes' => [
         /**

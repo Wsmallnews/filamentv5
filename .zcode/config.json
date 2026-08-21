@@ -1,0 +1,16 @@
+{
+    "mcp": {
+        "servers": {
+            "laravel-boost": {
+                "type": "stdio",
+                "command": "C:\\Users\\XPKJ-003\\.config\\herd\\bin\\php84\\php.exe",
+                "args": [
+                    "artisan",
+                    "boost:mcp"
+                ],
+                "cwd": "C:\\html\\herd\\filamentv5",
+                "timeoutMs": 60000
+            }
+        }
+    }
+}
