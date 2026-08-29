@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "cknow/laravel-money": "^8.5",
         "filament/filament": "~5.0",
         "laravel/framework": "^13.7",
         "laravel/tinker": "^3.0",
@@ -19,7 +20,9 @@
         "wsmallnews/cms": "v1.x-dev",
         "wsmallnews/comment": "v1.x-dev",
         "wsmallnews/filament-nestedset": "^3.x-dev",
+        "wsmallnews/member": "v1.x-dev",
         "wsmallnews/preference": "v1.x-dev",
+        "wsmallnews/product": "v1.x-dev",
         "wsmallnews/support": "v1.x-dev",
         "wsmallnews/user": "v1.x-dev"
     },
@@ -33,7 +36,8 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^4.7",
-        "pestphp/pest-plugin-laravel": "^4.1"
+        "pestphp/pest-plugin-laravel": "^4.1",
+        "pestphp/pest-plugin-livewire": "^4.1"
     },
     "autoload": {
         "psr-4": {
@@ -45,7 +49,8 @@
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/",
-            "Wsmallnews\\FilamentNestedset\\Tests\\": "addons/filament-nestedset/tests/"
+            "Wsmallnews\\FilamentNestedset\\Tests\\": "addons/filament-nestedset/tests/",
+            "Wsmallnews\\Product\\Database\\Factories\\": "addons/product/database/factories"
         }
     },
     "scripts": {
@@ -119,9 +124,17 @@
             "type": "path",
             "url": "./addons/filament-nestedset"
         },
+        "member": {
+            "type": "path",
+            "url": "./addons/member"
+        },
         "preference": {
             "type": "path",
             "url": "./addons/preference"
+        },
+        "product": {
+            "type": "path",
+            "url": "./addons/product"
         },
         "support": {
             "type": "path",

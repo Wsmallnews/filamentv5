@@ -1818,8 +1818,8 @@ FormComponents::mediaImageUpload('avatar', 'avatars');
 FormComponents::mediaFileUpload('attachment', 'documents');
 
 // 本地图片/文件上传
-FormComponents::localImageUpload('cover');
-FormComponents::localFileUpload('report');
+FormComponents::plainImageUpload('cover');
+FormComponents::plainFileUpload('report');
 
 // Markdown / 富文本编辑器
 FormComponents::markdownEditor('description');

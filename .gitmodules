@@ -10,9 +10,15 @@
 [submodule "addons/filament-nestedset"]
 	path = addons/filament-nestedset
 	url = git@github.com:Wsmallnews/filament-nestedset.git
+[submodule "addons/member"]
+	path = addons/member
+	url = git@github.com:Wsmallnews/member.git
 [submodule "addons/preference"]
 	path = addons/preference
 	url = git@github.com:Wsmallnews/preference.git
+[submodule "addons/product"]
+	path = addons/product
+	url = git@github.com:Wsmallnews/product.git
 [submodule "addons/support"]
 	path = addons/support
 	url = git@github.com:Wsmallnews/support.git

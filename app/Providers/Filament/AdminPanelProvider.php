@@ -19,9 +19,13 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Wsmallnews\Category\CategoryPlugin;
-use Wsmallnews\Category\Filament\Resources\CategoryTypes\CategoryTypeResource;
 use Wsmallnews\Cms\CmsPlugin;
 use Wsmallnews\Comment\CommentPlugin;
+use Wsmallnews\Member\MemberPlugin;
+use Wsmallnews\Product\ProductPlugin;
+use Wsmallnews\Support\Filament\Resources\ActivityLogs\ActivityLogResource;
+use Wsmallnews\Support\Filament\Resources\ScheduledTasks\ScheduledTaskResource;
+use Wsmallnews\User\UserPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -48,9 +52,16 @@ class AdminPanelProvider extends PanelProvider
                 AccountWidget::class,
                 FilamentInfoWidget::class,
             ])
+            ->resources([
+                ActivityLogResource::class,
+                ScheduledTaskResource::class,
+            ])
             ->plugins([
                 CategoryPlugin::make(),
                 CmsPlugin::make(),
+                MemberPlugin::make(),
+                ProductPlugin::make(),
+                UserPlugin::make(),
                 CommentPlugin::make(),
             ])
             ->middleware([

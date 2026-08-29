@@ -54,6 +54,11 @@ class User extends Authenticatable implements FilamentUser, HasAppAuthentication
     use Viewer;
 
     /**
+     * 搜索字段（用于 morphFilter 关键词搜索）。
+     */
+    public static array $keywordSearchFields = ['name', 'email'];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
