@@ -8572,7 +8572,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/category",
-                "reference": "be8b509413aa21884b7a2f8bad0443c433aa8f74"
+                "reference": "d18d2b7f35809429f3a417a0680b2b62d644522e"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -8658,7 +8658,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/cms",
-                "reference": "14dce459137fbcf1127b752b4c04d43fa3db7977"
+                "reference": "8a2a995ba8a3700ddf153424fc8ac07bc0009975"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -8751,7 +8751,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/comment",
-                "reference": "84c379b3cd5dd99af0602ac18c55c3d92f5d9a76"
+                "reference": "e011a110dfe9211910deff8730dda9d8471441e4"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -9034,7 +9034,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/preference",
-                "reference": "462adb53bab2a4e0683b0eaeb47dfd745dac9d1a"
+                "reference": "2704e26540a9986c2c0de8c26e370928c81a1adc"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -9133,7 +9133,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/product",
-                "reference": "ee519b738f568afc3a4e947c11e55beefcd15757"
+                "reference": "30a479af96afe52afc54760acc32a32c587a9105"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -9216,7 +9216,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/support",
-                "reference": "902b388a025e21a250f8f779047628e7ec1f9377"
+                "reference": "c3260bd08fe9e620ce1451d0a462bc2e46b1607b"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -9246,6 +9246,9 @@
                 "phpstan/phpstan-phpunit": "^1.0 || ^2.0",
                 "spatie/laravel-ray": "^1.26"
             },
+            "suggest": {
+                "laravel/scout": "Required to use the scout search engine (^10.0)"
+            },
             "type": "library",
             "extra": {
                 "laravel": {
@@ -9253,7 +9256,8 @@
                         "Wsmallnews\\Support\\SupportServiceProvider"
                     ],
                     "aliases": {
-                        "Support": "Wsmallnews\\Support\\Facades\\Support"
+                        "Support": "Wsmallnews\\Support\\Facades\\Support",
+                        "Search": "Wsmallnews\\Support\\Facades\\Search"
                     }
                 }
             },
