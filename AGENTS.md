@@ -1493,8 +1493,8 @@ return [
 
 preference 包的 Blade 组件依赖以下两个接口获取展示数据：
 
-- `Wsmallnews\Support\Contracts\HasSnIdentifiable` — 操作者侧接口（`getSnId()`、`getSnName()`、`getSnAvatarUrl()`、`getSnEmail()`、`getSnHrefUrl()`）
-- `Wsmallnews\Support\Contracts\HasSnSubject` — 目标侧接口（`getSnSubjectId()`、`getSnSubjectTitle()`、`getSnSubjectDescription()`、`getSnSubjectCoverUrl()`、`getSnSubjectHrefUrl()`）
+- `Wsmallnews\Support\Contracts\HasSnIdentifiable` — 操作者侧接口（`getSnId()`、`getSnName()`、`getSnAvatarUrl()`、`getSnEmail()`）
+- `Wsmallnews\Support\Contracts\HasSnSubject` — 目标侧接口（`getSnSubjectId()`、`getSnSubjectTitle()`、`getSnSubjectDescription()`、`getSnSubjectCoverUrl()`）
 
 User 模型可直接 use `Wsmallnews\Support\Concerns\UserIdentifiable` trait 来实现 `HasSnIdentifiable`。`HasSnSubject` 没有默认 trait，每个模型需自行实现。
 
@@ -1502,16 +1502,22 @@ User 模型可直接 use `Wsmallnews\Support\Concerns\UserIdentifiable` trait �
 
 三个基础 Blade 组件（`sn-preference::components.preference`、`preferenceable`、`preferencer`）均接受 `hasLink` prop（默认 `false`）。**注意：`isLink` 已改名为 `hasLink`，旧属性名不再有效。**
 
-- **`hasLink=true` 且 `getSnHrefUrl()`/`getSnSubjectHrefUrl()` 返回非空 URL**：组件渲染为 `<a>` 标签，可点击跳转
-- **`hasLink=true` 但 URL 为空**：组件渲染为 `<div>`，点击时通过 `wire:click.stop` 分发 Livewire 事件（`sn-preference-preferencer-click` 或 `sn-preference-preferenceable-click`），由父组件处理
+三个组件均接受 `href` prop（`string|Closure|null`）用于传入跳转链接（接口契约不含链接方法，链接由调用方传入；`preference` 组件的闭包优先接收 preferenceable，缺失时接收 preferencer）：
+
+- **`hasLink=true` 且 `href` 解析出非空 URL**：组件渲染为 `<a>` 标签，可点击跳转
+- **`hasLink=true` 但 URL 为空**：组件渲染为 `<div>`，点击时通过 `wire:click.stop` 分发 Livewire 事件（`sn-preference-preferencer-click`、`sn-preference-preferenceable-click` 或 `sn-preference-preference-click`），由父组件处理
+- **panel 语境（后台渲染）且未传 `href`**：组件自动兜底 `FilamentModelHelper::getUrl()`（后台资源链接），配合 `hasLink=true` 渲染为 `<a>`（panel 组件视图已默认 `has-link`）
 - **`hasLink=false`（默认）**：组件渲染为普通 `<div>`，无交互
 
+前端 Livewire 组件（`sn-preference-components-follows/likes/views`）支持 `hrefRoute` prop（路由名字符串，如 `sn-cms.posts.show`），传入后行项以 `sn_route($hrefRoute, $record)` 生成跳转链接（Livewire 无法传闭包，故用路由名）。
+
 ```blade
-{{-- 可点击跳转的偏好列表项 --}}
+{{-- 可点击跳转的偏好列表项（调用方直传链接） --}}
 <x-sn-preference::preferenceable
     :preference="$item"
     :preferenceable="$item->preferenceable"
     :has-link="true"
+    :href="fn ($record) => route('posts.show', $record)"
 />
 
 {{-- 无链接，点击时分发事件 --}}
@@ -1787,8 +1793,8 @@ return [
 ### 常见错误
 
 - **preferencer 模型必须实现 `HasSnIdentifiable` 接口**，否则 Blade 组件渲染会失败。User 模型可直接 use `UserIdentifiable` trait。
-- **preferenceable 模型必须实现 `HasSnSubject` 接口**，否则 Blade 组件渲染会失败。`HasSnSubject` 没有默认 trait，需自行实现全部 5 个方法。
-- **`getSnHrefUrl()` 和 `getSnSubjectHrefUrl()` 返回 `null` 时不显示跳转链接**，点击会分发 Livewire 事件。如需跳转，请返回有效的 URL 字符串。
+- **preferenceable 模型必须实现 `HasSnSubject` 接口**，否则 Blade 组件渲染会失败。`HasSnSubject` 没有默认 trait，需自行实现全部 4 个方法（不含跳转链接）。
+- **跳转链接由调用方传入**：`preferenceable` / `preference` 组件通过 `href` prop（string|Closure）接收链接；未传时点击会分发 Livewire 事件，由父组件监听跳转。panel 侧由 `FilamentModelHelper::getUrl()` 统一走 `resolveResourceUrl()` 兜底。
 - **`isLink` 已改名为 `hasLink`**，旧属性名不再有效，使用 `isLink` 的代码需更新。
 - **`CanPagination` 已包含 `WithPagination`**，不要在 Livewire 组件中重复 `use WithPagination`。
 - **counter 字段使用 JSON 格式**，模型中需配合 support 包的 `CounterCast` 使用：`'counter' => CounterCast::class`。
@@ -1910,7 +1916,7 @@ Filament Resources 使用 `HasScopeableProperties` concern：
 
 ### SN 身份与实体接口
 
-为 preference 等扩展包提供统一的"操作者"（谁）和"目标实体"（什么）数据抽象。Blade 组件通过这两个接口获取展示数据和跳转链接。
+为 preference 等扩展包提供统一的"操作者"（谁）和"目标实体"（什么）数据抽象。Blade 组件通过这两个接口获取展示数据。
 
 #### HasSnIdentifiable（身份/操作者接口）
 
@@ -1925,12 +1931,11 @@ getSnId(): int;                                          // 操作者 ID
 getSnName(): string | HtmlString | null;                 // 操作者名称
 getSnAvatarUrl(): string | HtmlString | null;            // 头像 URL
 getSnEmail(): string | HtmlString | null;                // 邮箱
-getSnHrefUrl(): string | HtmlString | null;              // 详情页跳转链接
 ```
 
 #### UserIdentifiable trait
 
-`Wsmallnews\Support\Concerns\UserIdentifiable` 为 `HasSnIdentifiable` 提供基于 Eloquent 属性的默认实现，自动映射 `$this->id`、`$this->name`、`$this->avatar_url`、`$this->email`。`getSnHrefUrl()` 默认返回 `null`：
+`Wsmallnews\Support\Concerns\UserIdentifiable` 为 `HasSnIdentifiable` 提供基于 Eloquent 属性的默认实现，自动映射 `$this->id`、`$this->name`、`$this->avatar_url`、`$this->email`：
 
 ```php
 use Wsmallnews\Support\Contracts\HasSnIdentifiable;
@@ -1955,10 +1960,9 @@ getSnSubjectId(): int;                                   // 实体 ID
 getSnSubjectTitle(): string | HtmlString | null;          // 标题
 getSnSubjectDescription(): string | HtmlString | null;    // 描述
 getSnSubjectCoverUrl(): string | HtmlString | null;       // 封面图 URL
-getSnSubjectHrefUrl(): string | HtmlString | null;        // 详情页跳转链接
 ```
 
-`HasSnSubject` 没有默认 trait，每个实现类需自行实现所有方法：
+`HasSnSubject` 没有默认 trait，每个实现类需自行实现所有方法（契约只包含固有展示数据，不含跳转链接）：
 
 ```php
 use Wsmallnews\Support\Contracts\HasSnSubject;
@@ -1969,7 +1973,6 @@ class Post extends SupportModel implements HasSnSubject
     public function getSnSubjectTitle(): string | HtmlString | null { return $this->title; }
     public function getSnSubjectDescription(): string | HtmlString | null { return $this->description; }
     public function getSnSubjectCoverUrl(): string | HtmlString | null { return $this->getFirstMediaUrl('post_image'); }
-    public function getSnSubjectHrefUrl(): string | HtmlString | null { return null; }
 }
 ```
 
@@ -1977,10 +1980,10 @@ class Post extends SupportModel implements HasSnSubject
 
 | 接口 | 用途 | 对应 trait | href 方法 |
 |---|---|---|---|
-| `HasSnIdentifiable` | 操作者/用户 | `UserIdentifiable` | `getSnHrefUrl()` |
-| `HasSnSubject` | 目标/内容实体 | 无默认 trait | `getSnSubjectHrefUrl()` |
+| `HasSnIdentifiable` | 操作者/用户 | `UserIdentifiable` | 无（链接由调用方传入） |
+| `HasSnSubject` | 目标/内容实体 | 无默认 trait | 无（链接由调用方传入） |
 
-两个接口的 href 方法返回非空 URL 时，preference 等包的 Blade 组件会渲染为可点击的 `<a>` 标签；返回 `null` 时点击会分发 Livewire 事件。
+两个接口只包含固有展示数据，跳转链接由调用方在 Blade 组件上传入 `href` prop（string|Closure），未传时渲染为普通元素并分发 Livewire 事件；panel 侧统一走 `FilamentModelHelper::resolveResourceUrl()` 兜底。
 
 ### 自定义表单字段
 
