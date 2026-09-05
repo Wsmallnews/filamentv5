@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M4 Footer 重构效果预览</title>
+<style>
+:root {
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --bg: #f9fafb;
+    --surface: #ffffff;
+    --text: #374151;
+    --text-muted: #6b7280;
+    --text-soft: #9ca3af;
+    --border: #e5e7eb;
+    --border-soft: #f3f4f6;
+    --tag-bg: #eef2ff;
+    --tag-text: #4f46e5;
+}
+html.dark {
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --bg: #030712;
+    --surface: #111827;
+    --text: #d1d5db;
+    --text-muted: #9ca3af;
+    --text-soft: #6b7280;
+    --border: #1f2937;
+    --border-soft: #1a2332;
+    --tag-bg: #1e1b4b;
+    --tag-text: #a5b4fc;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    display: flex; flex-direction: column; min-height: 100vh;
+    transition: background .2s, color .2s;
+}
+
+/* ===== 预览控制条（仅预览用，正式实现不存在） ===== */
+.preview-bar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 10px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    font-size: 13px; color: var(--text-muted); position: sticky; top: 0; z-index: 10;
+}
+.preview-bar strong { color: var(--text); }
+.preview-bar button {
+    margin-left: auto; border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    padding: 5px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.preview-bar button:hover { border-color: var(--primary); color: var(--primary); }
+.tag {
+    display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px;
+    background: var(--tag-bg); color: var(--tag-text); font-weight: 600; vertical-align: 1px;
+}
+.tag.m5 { background: #fff7ed; color: #c2410c; }
+html.dark .tag.m5 { background: #431407; color: #fdba74; }
+
+/* ===== 页面占位（示意正文区，让 footer 处于真实上下文） ===== */
+.page-mock { flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; padding: 48px 24px; }
+.page-mock .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    height: 260px; display: flex; align-items: center; justify-content: center;
+    color: var(--text-soft); font-size: 14px; letter-spacing: 2px;
+}
+
+/* ===== Footer 主体 ===== */
+.footer {
+    background: var(--surface); border-top: 2px solid var(--border); margin-top: 48px; padding: 40px 0 0;
+}
+.footer-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* 主体区：品牌区固定较宽 + 分组列自动填充 */
+.footer-main {
+    display: grid; gap: 32px 40px;
+    grid-template-columns: minmax(260px, 1.4fr) repeat(auto-fill, minmax(150px, 1fr));
+    align-items: start;
+}
+@media (max-width: 768px) { .footer-main { grid-template-columns: 1fr 1fr; } .footer-brand { grid-column: 1 / -1; } }
+@media (max-width: 520px) { .footer-main { grid-template-columns: 1fr; } }
+
+/* 品牌区 */
+.footer-brand { display: flex; flex-direction: column; gap: 14px; }
+.brand-row { display: flex; align-items: center; gap: 12px; }
+.brand-logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), #a78bfa);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 20px; letter-spacing: -1px;
+}
+.brand-name { font-size: 19px; font-weight: 700; color: var(--text); }
+.brand-slogan { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.brand-contact { display: flex; flex-direction: column; gap: 7px; font-size: 13px; color: var(--text-muted); }
+.brand-contact .row { display: flex; gap: 8px; align-items: baseline; }
+.brand-contact .label { flex: 0 0 60px; color: var(--text-soft); }
+.brand-contact .val { color: var(--text); }
+.brand-contact a { color: var(--text); text-decoration: none; }
+.brand-contact a:hover { color: var(--primary); }
+
+/* 二维码 */
+.brand-qrcodes { display: flex; gap: 16px; }
+.qr-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.qr-box {
+    width: 84px; height: 84px; border: 1px solid var(--border); border-radius: 10px; padding: 6px;
+    background:
+        repeating-linear-gradient(0deg, var(--border-soft) 0 8px, transparent 8px 16px),
+        repeating-linear-gradient(90deg, var(--border-soft) 0 8px, transparent 8px 16px),
+        var(--surface);
+}
+.qr-box::after { content: ""; }
+.qr-label { font-size: 12px; color: var(--text-soft); }
+
+/* 导航分组 */
+.nav-group .nav-title {
+    font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+}
+.nav-title::after { content: ""; width: 28px; height: 3px; border-radius: 2px; background: var(--primary); }
+.nav-group ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.nav-group a { font-size: 13px; color: var(--text-muted); text-decoration: none; transition: color .15s; }
+.nav-group a:hover { color: var(--primary); }
+
+/* ===== 分隔条通用 ===== */
+.footer-strip { border-top: 1px solid var(--border); margin-top: 36px; padding: 14px 0; }
+
+/* 快捷链接条（单级导航 + 法务 + RSS） */
+.quick-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0; font-size: 13px; }
+.quick-links a { color: var(--text-muted); text-decoration: none; padding: 0 12px; border-right: 1px solid var(--border); }
+.quick-links a:last-child { border-right: none; }
+.quick-links a:hover { color: var(--primary); }
+.quick-links .rss { display: inline-flex; align-items: center; gap: 5px; }
+.quick-links .rss svg { width: 13px; height: 13px; fill: #ea580c; }
+
+/* 友情链接（M5） */
+.friend-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 0; font-size: 13px; }
+.friend-links .fl-label { color: var(--text); font-weight: 600; padding-right: 12px; }
+.friend-links a { color: var(--text-soft); text-decoration: none; padding: 0 10px; border-right: 1px solid var(--border); }
+.friend-links a:last-child { border-right: none; }
+.friend-links a:hover { color: var(--primary); }
+.friend-links .apply { color: var(--primary); }
+
+/* 合规条 */
+.compliance { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 14px; font-size: 12px; color: var(--text-soft); padding-bottom: 20px; }
+.compliance a { color: var(--text-soft); text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+.compliance a:hover { color: var(--primary); }
+.compliance .police-badge { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; }
+
+/* ===== 全一级形态：品牌居左 + 快捷链接居右 ===== */
+.footer-main-flat { display: flex; justify-content: space-between; align-items: flex-start; gap: 40px 48px; flex-wrap: wrap; }
+.flat-links { display: flex; flex-wrap: wrap; justify-content: flex-end; align-content: flex-start; gap: 12px 0; font-size: 14px; max-width: 620px; }
+.flat-links a { color: var(--text-muted); text-decoration: none; padding: 0 16px; border-right: 1px solid var(--border); }
+.flat-links a:last-child { border-right: none; }
+.flat-links a:hover { color: var(--primary); }
+.flat-links .rss { display: inline-flex; align-items: center; gap: 5px; }
+.flat-links .rss svg { width: 14px; height: 14px; fill: #ea580c; }
+@media (max-width: 768px) {
+    .footer-main-flat { flex-direction: column; }
+    .flat-links { justify-content: flex-start; }
+}
+.preview-bar .mode-btn.is-active { border-color: var(--primary); color: var(--primary); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="preview-bar">
+    <strong>M4 Footer 重构预览</strong>（静态演示数据，正式实现数据来自底部导航/站点设置）
+    <span class="tag">分组列 = 底部导航</span>
+    <span class="tag">品牌区 = 站点设置</span>
+    <span class="tag m5">M5 预留</span>
+    <button class="mode-btn is-active" id="btn-mixed" onclick="switchMode('mixed')">混合形态</button>
+    <button class="mode-btn" id="btn-flat" onclick="switchMode('flat')">全一级形态</button>
+    <button onclick="document.documentElement.classList.toggle('dark')">切换明暗主题</button>
+</div>
+
+<script>
+function switchMode(mode) {
+    document.getElementById('footer-mixed').style.display = mode === 'mixed' ? '' : 'none';
+    document.getElementById('footer-flat').style.display = mode === 'flat' ? '' : 'none';
+    document.getElementById('btn-mixed').classList.toggle('is-active', mode === 'mixed');
+    document.getElementById('btn-flat').classList.toggle('is-active', mode === 'flat');
+}
+</script>
+
+<div class="page-mock"><div class="card">—— 页面正文区（示意） ——</div></div>
+
+<footer class="footer" id="footer-mixed">
+    <div class="footer-inner">
+
+        <!-- 主体区：品牌区 + 导航分组（Grid 自适应：分组多时自动换行） -->
+        <div class="footer-main">
+            <div class="footer-brand">
+                <div class="brand-row">
+                    <div class="brand-logo">新</div>
+                    <div>
+                        <div class="brand-name">小新闻资讯</div>
+                        <div class="brand-slogan">新鲜资讯，每日送达</div>
+                    </div>
+                </div>
+                <div class="brand-contact">
+                    <div class="row"><span class="label">电话</span><span class="val"><a href="tel:400-000-0000">400-000-0000</a></span></div>
+                    <div class="row"><span class="label">邮箱</span><span class="val"><a href="mailto:hi@smallnews.top">hi@smallnews.top</a></span></div>
+                    <div class="row"><span class="label">地址</span><span class="val">广东省深圳市南山区科技园</span></div>
+                    <div class="row"><span class="label">时间</span><span class="val">周一至周五 9:00-18:00</span></div>
+                </div>
+                <div class="brand-qrcodes">
+                    <div class="qr-item"><div class="qr-box"></div><div class="qr-label">公众号</div></div>
+                    <div class="qr-item"><div class="qr-box"></div><div class="qr-label">微信</div></div>
+                </div>
+            </div>
+
+            <!-- 以下三列 = 「底部导航」中有子级的一级导航（自动成列） -->
+            <div class="nav-group">
+                <div class="nav-title">关于我们</div>
+                <ul>
+                    <li><a href="#">公司简介</a></li>
+                    <li><a href="#">团队介绍</a></li>
+                    <li><a href="#">加入我们</a></li>
+                    <li><a href="#">联系方式</a></li>
+                </ul>
+            </div>
+            <div class="nav-group">
+                <div class="nav-title">新闻频道</div>
+                <ul>
+                    <li><a href="#">国内新闻</a></li>
+                    <li><a href="#">国际新闻</a></li>
+                    <li><a href="#">科技资讯</a></li>
+                    <li><a href="#">财经观察</a></li>
+                </ul>
+            </div>
+            <div class="nav-group">
+                <div class="nav-title">服务</div>
+                <ul>
+                    <li><a href="#">会员服务</a></li>
+                    <li><a href="#">广告合作</a></li>
+                    <li><a href="#">投稿指南</a></li>
+                </ul>
+            </div>
+            <!-- 演示分组多时自动换行：第 4 列 -->
+            <div class="nav-group">
+                <div class="nav-title">帮助中心</div>
+                <ul>
+                    <li><a href="#">常见问题</a></li>
+                    <li><a href="#">意见反馈</a></li>
+                    <li><a href="#">网站地图</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 快捷链接条 = 「底部导航」中无子级的一级导航（本场景只有首页/资讯两个一级）+ RSS（M5） -->
+        <div class="footer-strip quick-links">
+            <span class="tag" style="margin-right: 6px">快捷条：一级平铺</span>
+            <a href="#">首页</a>
+            <a href="#">资讯</a>
+            <a href="#" class="rss">
+                <svg viewBox="0 0 24 24"><path d="M6.18 20.82a2.18 2.18 0 1 1 0-4.36 2.18 2.18 0 0 1 0 4.36zM4 4.44v3.2c6.83 0 12.36 5.53 12.36 12.36h3.2C19.56 11.4 12.6 4.44 4 4.44zm0 5.66v3.2c3.87 0 7 3.13 7 7h3.2c0-5.63-4.57-10.2-10.2-10.2z"/></svg>
+                RSS 订阅 <span class="tag m5">M5</span>
+            </a>
+            <span style="color: var(--text-soft); font-size: 12px; padding-left: 12px">—— 其余导航均为两级分组，法务页（隐私政策/服务条款）可并入分组或也建为一级，运营自由</span>
+        </div>
+
+        <!-- 友情链接（M5：Link 模型，超出隐藏/换行） -->
+        <div class="footer-strip friend-links">
+            <span class="fl-label">友情链接：</span>
+            <a href="#">科技日报</a>
+            <a href="#">新华网</a>
+            <a href="#">人民网</a>
+            <a href="#">澎湃新闻</a>
+            <a href="#">虎嗅网</a>
+            <a href="#">36氪</a>
+            <a href="#" class="apply">申请链接</a>
+            <span class="tag m5" style="margin-left:8px">M5</span>
+        </div>
+
+        <!-- 合规条 = 站点设置（版权/ICP/公安备案） -->
+        <div class="footer-strip compliance" style="border-bottom: none;">
+            <span>Copyright © 2026 小新闻资讯 版权所有</span>
+            <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener">粤ICP备2026000000号-1</a>
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=44030000000000" target="_blank" rel="noopener">
+                <svg class="police-badge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#d1d5db"/><path d="M12 4l6 2.4v5c0 4-2.6 7.2-6 8.6-3.4-1.4-6-4.6-6-8.6v-5L12 4z" fill="#6b7280"/><path d="M9 12.2l2 2 4-4.2" stroke="#fff" stroke-width="1.6" fill="none"/></svg>
+                粤公网安备 44030000000000号
+            </a>
+        </div>
+    </div>
+</footer>
+
+<!-- ===== 全一级形态：底部导航全部是单级（无分组），快捷链接移到品牌区右侧 ===== -->
+<footer class="footer" id="footer-flat" style="display: none">
+    <div class="footer-inner">
+
+        <div class="footer-main-flat">
+            <div class="footer-brand">
+                <div class="brand-row">
+                    <div class="brand-logo">新</div>
+                    <div>
+                        <div class="brand-name">小新闻资讯</div>
+                        <div class="brand-slogan">新鲜资讯，每日送达</div>
+                    </div>
+                </div>
+                <div class="brand-contact">
+                    <div class="row"><span class="label">电话</span><span class="val"><a href="tel:400-000-0000">400-000-0000</a></span></div>
+                    <div class="row"><span class="label">邮箱</span><span class="val"><a href="mailto:hi@smallnews.top">hi@smallnews.top</a></span></div>
+                    <div class="row"><span class="label">地址</span><span class="val">广东省深圳市南山区科技园</span></div>
+                    <div class="row"><span class="label">时间</span><span class="val">周一至周五 9:00-18:00</span></div>
+                </div>
+                <div class="brand-qrcodes">
+                    <div class="qr-item"><div class="qr-box"></div><div class="qr-label">公众号</div></div>
+                    <div class="qr-item"><div class="qr-box"></div><div class="qr-label">微信</div></div>
+                </div>
+            </div>
+
+            <!-- 快捷链接（全部一级导航）：居右、自动换行；导航多时换成两三行排布 -->
+            <div class="flat-links">
+                <span class="tag" style="align-self: center; margin-right: 4px">全一级：快捷链接移到品牌右侧</span>
+                <a href="#">首页</a>
+                <a href="#">资讯</a>
+                <a href="#">关于我们</a>
+                <a href="#">联系方式</a>
+                <a href="#">隐私政策</a>
+                <a href="#">服务条款</a>
+                <a href="#">网站地图</a>
+                <a href="#" class="rss">
+                    <svg viewBox="0 0 24 24"><path d="M6.18 20.82a2.18 2.18 0 1 1 0-4.36 2.18 2.18 0 0 1 0 4.36zM4 4.44v3.2c6.83 0 12.36 5.53 12.36 12.36h3.2C19.56 11.4 12.6 4.44 4 4.44zm0 5.66v3.2c3.87 0 7 3.13 7 7h3.2c0-5.63-4.57-10.2-10.2-10.2z"/></svg>
+                    RSS 订阅 <span class="tag m5">M5</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 友情链接（M5：Link 模型，超出隐藏/换行） -->
+        <div class="footer-strip friend-links">
+            <span class="fl-label">友情链接：</span>
+            <a href="#">科技日报</a>
+            <a href="#">新华网</a>
+            <a href="#">人民网</a>
+            <a href="#">澎湃新闻</a>
+            <a href="#">虎嗅网</a>
+            <a href="#">36氪</a>
+            <a href="#" class="apply">申请链接</a>
+            <span class="tag m5" style="margin-left:8px">M5</span>
+        </div>
+
+        <!-- 合规条 = 站点设置（版权/ICP/公安备案） -->
+        <div class="footer-strip compliance" style="border-bottom: none;">
+            <span>Copyright © 2026 小新闻资讯 版权所有</span>
+            <a href="https://beian.miit.gov.cn" target="_blank" rel="noopener">粤ICP备2026000000号-1</a>
+            <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=44030000000000" target="_blank" rel="noopener">
+                <svg class="police-badge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#d1d5db"/><path d="M12 4l6 2.4v5c0 4-2.6 7.2-6 8.6-3.4-1.4-6-4.6-6-8.6v-5L12 4z" fill="#6b7280"/><path d="M9 12.2l2 2 4-4.2" stroke="#fff" stroke-width="1.6" fill="none"/></svg>
+                粤公网安备 44030000000000号
+            </a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,8 +1,9 @@
 <?php
 
-use Filament\Support\Icons\Heroicon;
 use Wsmallnews\Category\Filament\Pages\Category\CategoryPage as PostCategoryPage;
+use Wsmallnews\Cms\Enums;
 use Wsmallnews\Cms\Filament\Pages\GeneralSetting as GeneralSettingPage;
+use Wsmallnews\Cms\Filament\Pages\Navigation\Footer\FooterNavigationPage;
 use Wsmallnews\Cms\Filament\Pages\Navigation\NavigationPage;
 use Wsmallnews\Cms\Filament\Resources\NavigationTypes\NavigationTypeResource;
 use Wsmallnews\Cms\Filament\Resources\Posts\PostResource;
@@ -58,6 +59,7 @@ return [
             ],
             GeneralSettingPage::class,
             NavigationPage::class,
+            FooterNavigationPage::class,
         ],
     ],
 
@@ -155,6 +157,9 @@ return [
             'posts' => 'posts',
             'posts-show' => 'posts/{slug}',
 
+            // 全局搜索结果页（search.display = 'page' 时搜索框回车跳转目标）
+            'search' => 'search',
+
             'login' => 'login',
             'register' => 'register',
             'profile' => 'profile',
@@ -201,6 +206,28 @@ return [
         ],
     ],
 
+    /**
+     * 全局搜索（前端搜索框仅在本模块启用时渲染，来源也仅在启用时参与搜索）
+     */
+    'search' => [
+        /**
+         * 是否启用本模块的全局搜索
+         */
+        'enabled' => true,
+
+        /**
+         * 本模块搜索引擎：'database' | 'scout' | 引擎类名；null 走全局兜底
+         * （config('sn-support.search.engine')，默认 database）
+         */
+        'engine' => null,
+
+        /**
+         * 搜索结果的展示方式：'dropdown'（输入即搜，浮层展示）| 'page'（回车跳转独立搜索结果页）
+         * null 走全局兜底（config('sn-support.search.display')，默认 dropdown）
+         */
+        'display' => 'page',
+    ],
+
     'themes' => [
         // 是否启用暗黑模式
         'dark_mode' => true,
@@ -220,33 +247,14 @@ return [
     ],
 
     /**
-     * 推荐标签配置
-     * 用户可以自定义追加，比如精品、必看等
+     * 可自定义的 enum
+     *
+     * 替换类必须实现对应契约接口，并保证契约常量对应的值存在（值是数据库与查询逻辑的稳定契约）。
+     * 只有"展示元数据型" enum 才登记在此（label/color/icon 随站点变化、业务行为不依赖 case 身份），
+     * 业务状态机型 enum（如 PostStatus）不开放配置。
      */
-    'flags' => [
-        [
-            'type' => 'hot',
-            'label' => '热门',
-            'color' => 'danger',
-            'icon' => Heroicon::OutlinedFire,
-        ],
-        [
-            'type' => 'new',
-            'label' => '新',
-            'color' => 'danger',
-            'icon' => Heroicon::OutlinedSparkles,
-        ],
-        [
-            'type' => 'recommend',
-            'label' => '推荐',
-            'color' => 'primary',
-            'icon' => Heroicon::OutlinedStar,
-        ],
-        [
-            'type' => 'top',
-            'label' => '置顶',
-            'color' => 'warning',
-            'icon' => Heroicon::OutlinedArrowUp,
-        ],
+    'enums' => [
+        // 图文 flag，须实现 Wsmallnews\Cms\Contracts\PostFlagContract
+        'post_flag' => Enums\PostFlag::class,
     ],
 ];

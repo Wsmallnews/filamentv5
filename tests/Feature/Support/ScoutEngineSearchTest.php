@@ -23,7 +23,7 @@ it('scout 引擎按关键词命中模型（scout 闭包过滤生效）', functio
     User::factory()->create(['name' => '张三丰']);
     User::factory()->create(['name' => '李四']);
 
-    Search::engine('app', 'scout')->registers('app', [
+    Search::config('app', ['engine' => 'scout'])->registers('app', [
         [
             'key' => 'user',
             'model' => User::class,
@@ -31,7 +31,7 @@ it('scout 引擎按关键词命中模型（scout 闭包过滤生效）', functio
         ],
     ]);
 
-    $results = Search::search('张三', 'app')->flatten();
+    $results = Search::search('app', '张三')->flatten();
 
     expect($results)->toHaveCount(1)
         ->and($results->first()->title)->toBe('张三丰');
@@ -42,18 +42,18 @@ it('scout 引擎 limit 限制返回条数', function () {
     User::factory()->create(['name' => '搜索测试二号']);
     User::factory()->create(['name' => '搜索测试三号']);
 
-    Search::engine('app', 'scout')->registers('app', [
+    Search::config('app', ['engine' => 'scout'])->registers('app', [
         ['key' => 'user', 'model' => User::class],
     ]);
 
-    expect(Search::search('搜索测试', 'app', limit: 2)->flatten())->toHaveCount(2);
+    expect(Search::search('app', '搜索测试', limit: 2)->flatten())->toHaveCount(2);
 });
 
 it('模型未 use Scout Searchable 时抛出异常', function () {
     // Post（包内模型）未 use Laravel\Scout\Searchable，模块声明 scout 引擎后整模块不可用
-    Search::engine('bad', 'scout')->registers('bad', [
+    Search::config('bad', ['engine' => 'scout'])->registers('bad', [
         ['key' => 'post', 'model' => Post::class],
     ]);
 
-    Search::search('任意', 'bad');
+    Search::search('bad', '任意');
 })->throws(SupportException::class);

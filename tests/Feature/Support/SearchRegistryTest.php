@@ -61,18 +61,18 @@ it('union 搜索合并所有来源，指定搜索名只取该搜索', function (
     registerFakeSource('sn-cms', 'post');
     registerFakeSource('sn-product', 'product');
 
-    $union = Search::search('任意', limit: 5);
+    $union = Search::search(null, '任意', limit: 5);
 
     expect($union->flatten())->toHaveCount(2)
-        ->and(Search::search('任意', 'sn-cms', 5)->flatten())->toHaveCount(1)
-        ->and(Search::search('任意', 'sn-cms', 5)->flatten()->first()->key)->toBe('post');
+        ->and(Search::search('sn-cms', '任意', 5)->flatten())->toHaveCount(1)
+        ->and(Search::search('sn-cms', '任意', 5)->flatten()->first()->key)->toBe('post');
 });
 
 it('自定义 results 闭包绕过引擎并按 sort 分组', function () {
     registerFakeSource('demo', 'low', ['sort' => 2, 'group' => 'B组']);
     registerFakeSource('demo', 'high', ['sort' => 1, 'group' => 'A组']);
 
-    $groups = Search::search('任意');
+    $groups = Search::search(null, '任意');
 
     expect($groups->keys()->toArray())->toBe(['A组', 'B组'])
         ->and($groups->first()->first()->title)->toBe('high-结果');
@@ -82,8 +82,8 @@ it('visible 为 false 的来源跳过搜索', function () {
     registerFakeSource('demo', 'hidden', ['visible' => fn () => false]);
     registerFakeSource('demo', 'shown');
 
-    expect(Search::search('任意')->flatten())->toHaveCount(1)
-        ->and(Search::search('任意')->flatten()->first()->key)->toBe('shown');
+    expect(Search::search(null, '任意')->flatten())->toHaveCount(1)
+        ->and(Search::search(null, '任意')->flatten()->first()->key)->toBe('shown');
 });
 
 it('forget 注销搜索', function () {
@@ -94,7 +94,7 @@ it('forget 注销搜索', function () {
 });
 
 it('搜索未注册的搜索名抛异常', function () {
-    Search::search('任意', 'not-exists');
+    Search::search('not-exists', '任意');
 })->throws(SupportException::class);
 
 it('缺少 model 选项时注册抛异常', function () {
@@ -104,25 +104,25 @@ it('缺少 model 选项时注册抛异常', function () {
 it('空关键词返回空集合', function () {
     registerFakeSource('demo', 'post');
 
-    expect(Search::search(''))->toBeEmpty()
-        ->and(Search::search('   '))->toBeEmpty();
+    expect(Search::search(null, ''))->toBeEmpty()
+        ->and(Search::search(null, '   '))->toBeEmpty();
 });
 
 it('模块级引擎优先于全局配置', function () {
-    Search::engine('sn-cms', SupportEmptySearchEngine::class)->registers('sn-cms', [
+    Search::config('sn-cms', ['engine' => SupportEmptySearchEngine::class])->registers('sn-cms', [
         ['key' => 'post', 'model' => Post::class, 'group' => '图文'],
     ]);
 
     createRegistryPost('引擎测试文章', 'engine-test');
 
     // 数据库中有可命中数据，但模块声明了空结果引擎 → 无结果（模块引擎生效）
-    expect(Search::search('引擎测试', 'sn-cms'))->toBeEmpty();
+    expect(Search::search('sn-cms', '引擎测试'))->toBeEmpty();
 
     // 未声明引擎的模块走全局兜底（database）→ 正常命中
     Search::registers('other', [
         ['key' => 'post', 'model' => Post::class, 'group' => '图文'],
     ]);
-    expect(Search::search('引擎测试', 'other')->flatten())->toHaveCount(1);
+    expect(Search::search('other', '引擎测试')->flatten())->toHaveCount(1);
 });
 
 it('引擎与注册顺序无关，后设置也可、再次调用即覆盖', function () {
@@ -130,25 +130,42 @@ it('引擎与注册顺序无关，后设置也可、再次调用即覆盖', func
     Search::registers('sn-cms', [
         ['key' => 'post', 'model' => Post::class, 'group' => '图文'],
     ]);
-    Search::engine('sn-cms', SupportEmptySearchEngine::class);
+    Search::config('sn-cms', ['engine' => SupportEmptySearchEngine::class]);
 
     createRegistryPost('顺序无关文章', 'order-independent');
 
-    expect(Search::getEngine('sn-cms'))->toBe(SupportEmptySearchEngine::class)
-        ->and(Search::search('顺序无关', 'sn-cms'))->toBeEmpty();
+    expect(Search::getConfig('sn-cms', 'engine'))->toBe(SupportEmptySearchEngine::class)
+        ->and(Search::search('sn-cms', '顺序无关'))->toBeEmpty();
 
-    // 再次调用 engine() 显式覆盖为 database
-    Search::engine('sn-cms', 'database');
-    expect(Search::getEngine('sn-cms'))->toBe('database')
-        ->and(Search::search('顺序无关', 'sn-cms')->flatten())->toHaveCount(1);
+    // 再次调用 config() 显式覆盖为 database
+    Search::config('sn-cms', ['engine' => 'database']);
+    expect(Search::getConfig('sn-cms', 'engine'))->toBe('database')
+        ->and(Search::search('sn-cms', '顺序无关')->flatten())->toHaveCount(1);
 });
 
 it('engine 传 null 移除模块声明恢复全局兜底', function () {
-    Search::engine('demo', SupportEmptySearchEngine::class)->registers('demo', [
+    Search::config('demo', ['engine' => SupportEmptySearchEngine::class])->registers('demo', [
         ['key' => 'post', 'model' => Post::class, 'group' => '图文'],
     ]);
-    expect(Search::getEngine('demo'))->toBe(SupportEmptySearchEngine::class);
+    expect(Search::getConfig('demo', 'engine'))->toBe(SupportEmptySearchEngine::class);
 
-    Search::engine('demo', null);
-    expect(Search::getEngine('demo'))->toBeNull();
+    Search::config('demo', ['engine' => null]);
+    expect(Search::getConfig('demo', 'engine'))->toBeNull();
+});
+
+it('来源可声明自定义条目视图与渲染闭包', function () {
+    Search::registers('sn-cms', [
+        ['key' => 'post', 'model' => Post::class, 'group' => '图文', 'view' => 'custom.item-view'],
+    ]);
+    Search::registers('sn-other', [
+        ['key' => 'post', 'model' => Post::class, 'group' => '图文', 'render' => fn ($result, $query) => 'rendered'],
+    ]);
+    // 未声明 view 的来源兜底默认统一模板
+    Search::registers('sn-demo', [
+        ['key' => 'post', 'model' => Post::class, 'group' => '图文'],
+    ]);
+
+    expect(Search::itemRenderers('sn-cms')['post'])->toBe(['view' => 'custom.item-view', 'render' => null])
+        ->and(Search::itemRenderers('sn-other')['post']['render'])->toBeInstanceOf(Closure::class)
+        ->and(Search::itemRenderers('sn-demo')['post']['view'])->toBe(SearchSource::DEFAULT_ITEM_VIEW);
 });

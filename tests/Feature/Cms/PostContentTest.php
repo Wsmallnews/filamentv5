@@ -6,6 +6,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Wsmallnews\Cms\Filament\Resources\Posts\Pages\CreatePost;
 use Wsmallnews\Cms\Filament\Resources\Posts\Pages\EditPost;
+use Wsmallnews\Cms\Filament\Resources\Posts\Pages\ListPosts;
 use Wsmallnews\Cms\Models\Post;
 use Wsmallnews\Support\Enums\ContentType;
 
@@ -19,6 +20,11 @@ beforeEach(function () {
     $this->actingAs($admin, 'admin');
 
     Storage::fake();
+
+    // post 表单的分类树选择（select-tree）查询 sn_categories，测试库需补建 category 包的表（迁移未发布到应用目录）
+    foreach (glob(base_path('addons/category/database/migrations/*.php.stub')) ?: [] as $migrationFile) {
+        (require $migrationFile)->up();
+    }
 });
 
 it('post 表单的类型切换包含全部内容类型', function () {
@@ -130,4 +136,27 @@ it('编辑 post 时回填当前类型内容并可切换为富文本', function (
 
     expect($post->refresh()->content->content_type)->toBe(ContentType::Richtext)
         ->and($post->content->content)->toBe('<p>切换后的内容</p>');
+});
+
+it('posts 表格 flags 列以原生 badge 渲染 enum 元数据', function () {
+    $post = Post::create([
+        'publisher_type' => 'user',
+        'publisher_id' => User::factory()->create()->id,
+        'scope_type' => 'sn-cms',
+        'scope_id' => 0,
+        'title' => '徽章列文章',
+        'slug' => 'badge-flags-post',
+        'flags' => ['hot', 'top'],
+        'status' => 'published',
+    ]);
+
+    livewire(ListPosts::class)
+        ->assertSuccessful()
+        ->assertSee('徽章列文章')
+        // flag label 来自 PostFlag enum 的翻译键
+        ->assertSee('热门')
+        ->assertSee('置顶')
+        // 原生 badge 走 Filament 色名解析
+        ->assertSeeHtml('fi-color-danger')
+        ->assertSeeHtml('fi-color-warning');
 });

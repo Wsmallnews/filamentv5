@@ -1245,7 +1245,7 @@ php artisan make:filament-nestedset-page
 | `$emptyTipLabel` | `?string` | 翻译文本 | 树为空时的辅助提示 |
 | `$tabFieldName` | `?string` | `null` | Tabs 筛选的字段名 |
 | `$infolistAlignment` | `Alignment` | `Alignment::Right` | Infolist 对齐方式 |
-| `$infolistHiddenEndpoint` | `string` | `'md'` | Infolist 显示的最小断点 |
+| `$infolistHiddenEndpoint` | `string` | `'3xl'` | Infolist 显示的最小**树容器宽度**断点（CSS 容器查询刻度，按树容器实际宽度而非视口判断）。允许值：`3xs` 16rem、`2xs` 18rem、`xs` 20rem、`sm` 24rem、`md` 28rem、`lg` 32rem、`xl` 36rem、`2xl` 42rem、`3xl` 48rem、`4xl` 56rem、`5xl` 64rem、`6xl` 72rem、`7xl` 80rem。完整说明见 [Tailwind 容器尺寸对照表](https://tailwindcss.com/docs/responsive-design#container-size-reference) |
 | `$isScopedToTenant` | `bool` | `true` | 是否关联 Filament 当前租户 |
 | `$navigationIcon` | `string\|BackedEnum\|null` | `Heroicon::OutlinedBars3BottomRight` | 导航图标（继承自 Page） |
 
@@ -1440,6 +1440,7 @@ return [
     'allow_delete_root' => false,                     // 是否允许删除根节点
     'create_action_modal_show_parent_select' => true, // 创建弹窗是否显示父级选择
     'show_create_child_node_action_in_row' => true,   // 行内是否显示“创建子节点”按钮
+    'show_row_action_labels' => true,                 // 行操作按钮文字：true = 树容器不足 sm(24rem) 时隐藏文字只留图标（容器查询）；false = Action 层 hiddenLabel，任何宽度只留图标（aria-label 保留）
     'autoload_assets' => true,                        // 是否自动加载 CSS（自定义主题时关闭）
 ];
 ```
@@ -1474,6 +1475,16 @@ return [
 - **Livewire 前端组件必须覆盖 `getNestedset()` 或设置 `$model`**，否则抛出异常。
 - **`autoload_assets` 关闭后需在自定义主题 CSS 中手动引入**：`@import '../../../../vendor/wsmallnews/filament-nestedset/resources/css/index.css'`。
 - **拖拽移动节点受 `$level` 限制**，超过层级限制时操作会被取消并提示。
+
+### Release 规范（发布流程）
+
+在 `addons/filament-nestedset` 包仓库内执行：
+
+1. **发布前同步**：`git fetch origin --tags`，目标分支 `git pull --ff-only` 与远程对齐。**禁止重打任何已存在的稳定版本 tag**：Packagist 稳定版本一经发布永久绑定当时的 commit（tag 即使从 GitHub 删除，Packagist 仍保留该版本）；发现目标版本号在 Packagist 已存在时（含仅 Packagist 有、远程已删除的情况），直接递增版本号发新版本，不要重打。
+2. **tag 命名**：`v` + semver，与现有 tag 一致；维护线（`v2` 分支）取该分支最新 tag 的最小版本号 +1（如 v2.2.1 → v2.2.2）；主线（`v3` 分支）发布正式版（v3.0.0 → v3.1.0 / v4.0.0）。
+3. **Release notes 优先用 GitHub 自动生成**：`gh release create <tag> --title <tag> --generate-notes`（自动包含 PR 作者归属与 New Contributors）；仅当版本范围内没有任何 PR 时，才手写中文变更清单（commit 按时间倒序）；范围 = 上一 tag 到当前 HEAD 的全部提交。
+4. **发布顺序**：push 分支 → push tag → create release；发布后确认 Latest 标记指向主版本线（`gh release edit <tag> --latest`），并提醒 Packagist 会自动抓取新 tag（可手动点 Update 立即触发）。
+5. **在包仓库切过分支后必须切回 `v3`**：主应用 `vendor/wsmallnews/filament-nestedset` 是指向此目录的软链，停留在 `v2` 等旧分支会弄坏主应用；发布完成后主仓库记得提交 submodule 指针变更。
 
 === wsmallnews/preference rules ===
 
@@ -1857,6 +1868,113 @@ ActionComponents::deleteAction();
 ActionComponents::editAction();
 ```
 
+### 前端 CSS 类体系（sn-*）
+
+所有 `sn-*` 前端自定义类定义在 `addons/support/resources/css/index.css`（Tailwind v4 `@apply` 编译，随 app.css 引入）。通用模式为「**基础类（形状/尺寸）+ 修饰类（颜色/状态）**」组合，各体系见下。
+
+#### 设计令牌（tokens.css，主题定制唯一入口）
+
+几何样式（圆角/阴影/光环/间距刻度）统一消费 `addons/support/resources/css/tokens.css` 中的 `--sn-*` 设计令牌。**几何令牌在 lg 断点（64rem）自动翻转**（< lg 一档 / ≥ lg 一档），颜色令牌在 `.dark` 翻转——引用这些令牌的类（sn-container、sn-rounded、sn-page 等）自动获得响应式与暗黑适配，HTML 无需断点前缀。
+
+| 令牌 | < lg | ≥ lg | 消费者 |
+|---|---|---|---|
+| `--sn-radius-card` | 0.375rem (md) | 0.5rem (lg) | sn-container/contour、sn-rounded、sn-elevation |
+| `--sn-space-page` / `--sn-space-page-y` | 1rem | 1.5rem | sn-page |
+| `--sn-space-page-x` | 1rem | 1.5rem | sn-page 左右留白（防贴边 + 刘海安全区） |
+| `--sn-space-card` | 1rem | 1.5rem | sn-padded、sn-list-* |
+| `--sn-shadow-card` / `-hover` | 隐约单层 | shadow-sm 级 | 容器投影 |
+| `--sn-ring-card` / `-hover` | dark 翻转的描边色 | — | 光环 |
+| `--sn-radius-control` / `--sn-radius-pill` | 恒定值（控件/胶囊） | — | sn-btn 等 |
+
+**主题定制两种方式**：① CSS 覆盖——在 app.css 中 `@import` support 之后重新声明同名变量；② 运行时配置——`config/sn-support.php` 的 `theme` 节（键 = 令牌名去 `--sn-` 前缀，`_lg` 后缀 = 桌面档），前端 layout 在 `@vite` 之后写 `@snTheme` 指令输出（support 注册的 Blade 指令），panel 经 `panels::styles.after` renderHook 注入，无需重新构建。
+
+**原子基元**（`@utility` 注册，可在 HTML 直接用、支持变体、可被聚合类 `@apply`）：`sn-surface`（卡片底色）、`sn-radius-card`（响应式圆角）、`sn-ring-card`（响应式光环）、`sn-elevation`（光环+投影）。
+
+**页面骨架与列表类**：`sn-page`（= `container mx-auto flex flex-col grow` + 响应式 gap/my，替代手写 `gap-4 my-4` 骨架）；`sn-padded`（响应式卡片内边距 p-4 → p-6）；`sn-list-header` / `sn-list-row` / `sn-list-footer`（卡片内列表头/行/底栏，响应式内边距 + 分隔线，末行自动去线）。
+
+**职责边界**：sn-* 类只管主题性、重复性、需统一改的样式；布局结构（flex/grid、列数、可见性）继续在 HTML 写 Tailwind 断点前缀。可嵌入组件（comment、preference 列表）用容器查询（根 `@container` + `@md:` 前缀）适配窄容器。注意：聚合类是 unlayered 规则，优先于 HTML 中的 rounded-* 等 layered 工具类，个别差异场景用 `!` 修饰。
+
+#### 容器体系（使用最广，注意职责边界）
+
+`sn-container` 是**内容区块卡片容器**（亮色白底 / 暗色深底 + ring-1 边框 + rounded-md + 过渡），**不是通用布局 div**——列表、表单、面板等页面区块用它包裹；不需要卡片感的内容区不要加（它自带背景/边框/阴影）。
+
+```blade
+{{-- 基础卡片 --}}
+<div class="sn-container">...</div>
+
+{{-- 可交互卡片：hover 阴影加深 --}}
+<div class="sn-container sn-hover">...</div>
+
+{{-- 整卡片是链接：hover 主题色淡底 --}}
+<a class="sn-container sn-link">...</a>
+
+{{-- 选中态：主题色淡底 --}}
+<div class="sn-container sn-active">...</div>
+```
+
+**状态类的两层语义（AI 高频出错点）**：`sn-hover` / `sn-link` / `sn-active` 在容器上（`&.sn-link`）和容器**内部子元素**上（`.sn-link` 后代选择器）都生效。分类树节点高亮依赖「外层 `sn-container` + 节点自身 `sn-link`/`sn-active`」的组合——**漏掉外层 sn-container，节点高亮样式不会生效**。
+
+其他容器与背景类：
+
+| 类 | 说明 |
+|---|---|
+| `sn-container-primary/danger/success/info/warning/gray` | 彩色浅底容器变体（同款状态类） |
+| `sn-bg` | 纯背景（白/深），无边框阴影 |
+| `sn-primary-bg` | 主题色实底（bg-primary-500 dark:bg-primary-600），导航 / 高亮条使用 |
+| `sn-gray-bg` / `sn-no-bg` | 灰底 / 透明底，均带 sn-hover / sn-active 状态 |
+| `sn-contour(-{color})` | 无背景纯描边（ring）容器 |
+| `sn-contour-only` | border 描边（支持单边，方向由外部指定） |
+| `sn-rounded` | 区块圆角（响应式：< lg 为 md，≥ lg 为 lg，走 `--sn-radius-card` 令牌） |
+| `sn-divide-x` / `sn-divide-y` | 容器分隔线（含暗色） |
+
+#### 徽章 sn-badge（三变体 + 尺寸 + 动态色）
+
+组合用法：`sn-badge`（形状 + 默认尺寸）+ 尺寸类（可选）+ 变体色类。色名固定六色：`primary/danger/success/info/warning/gray`。
+
+```blade
+{{-- soft（默认）：主色透明度浅底，内容标注首选 --}}
+<span class="sn-badge sn-badge-primary">分类名</span>
+
+{{-- outline：透明底 + 主色内描边 --}}
+<span class="sn-badge sn-badge-outline-primary">分类名</span>
+
+{{-- solid：正色 500 实底（不深于导航主题色 primary-500，避免抢重点），醒目场景 --}}
+<span class="sn-badge sn-badge-solid-primary">分类名</span>
+
+{{-- 尺寸：sn-badge-xs(10px) / sn-badge-sm(11px) / 默认(12px) / sn-badge-lg(14px) --}}
+<span class="sn-badge sn-badge-sm sn-badge-danger">热门</span>
+```
+
+- solid 文字色采用白字优先策略（对比度 ≥2:1 即白字，品牌视觉权衡：徽章短词加粗场景，实底品牌色配白字是行业惯例；完全无障碍合规场景用 soft/outline），仅极浅色（yellow/lime 系）回退 950 深字
+- 动态色（`Color::Blue` 色板 / hex / 非六色色名）：用 `sn_badge_color($color, $variant)` 助手，返回 `['class' => ..., 'style' => ...]`（动态路径注入 `--sn-color-*` 变量）
+- 醒目 tab 选中态：`sn-tabs-item-vivid` 叠加在 `fi-tabs-item` 上，变量由 `sn_badge_color($color, 'solid', asVariables: true)['style']` 注入
+
+#### 按钮 sn-btn
+
+`sn-btn`（基础：形状 + focus 环 + disabled 态）+ 尺寸（`sn-btn-sm/md/lg`）+ 变体（`sn-btn-primary/secondary/danger/success` 实色、`sn-btn-outline(-primary/danger)`、`sn-btn-ghost(-primary/danger)`）。按钮底色用 600 + hover 提亮 500（交互控件惯例，与徽章正色 500 不同）；`sn-btn-icon` 配合尺寸类使用。
+
+#### 文字体系
+
+- 标题：`sn-h1-text` / `sn-h2-text` / `sn-h3-text`（字号递减，均支持 `sn-hover`（含 group-hover）/ `sn-active` 主题色状态）
+- 正文与辅助：`sn-content-text`（正文）、`sn-descript-text`（描述）、`sn-tip-text`（提示，最小）
+- 颜色：`sn-primary-text` / `sn-secondary-text` / `sn-danger-text` / `sn-success-text` / `sn-info-text` / `sn-warning-text` / `sn-gray-text`
+
+#### 其他组件类
+
+| 类 | 说明 |
+|---|---|
+| `sn-empty` 系列 | 空状态（`sn-empty-title/description/actions`、`sn-empty-icon-bg` + 尺寸 `sm/md/lg/xl/2xl` + 六色、`sn-compact` 紧凑模式） |
+| `sn-skeleton` 系列 | 骨架屏：基础类（动画+底色+md 圆角）+ 修饰类（`sn-skeleton-text` 文本条、`sn-skeleton-circle` 圆形）组合 |
+| `sn-avatar` / `sn-image` 系列 | 头像（圆形）/ 图片占位（圆角方形），尺寸 `sm/lg/xl`；`-group` 叠放组 |
+| `sn-focus-ring` | 可聚焦元素焦点环（含 rounded-sm） |
+| `sn-truncate` / `sn-truncate-2/3/4` | 单行截断 / 多行省略 |
+| `sn-transition` 系列 | 过渡（all/colors/opacity/transform，统一时长缓动） |
+| `sn-overlay` | 全屏遮罩（黑 50%/70%） |
+| `sn-scrollbar` | 细滚动条（亮暗色适配） |
+| `sn-aspect-video/landscape/square/portrait` | 宽高比 16:9 / 4:3 / 1:1 / 3:4 |
+| `sn-motion-scale` | 图片 hover 缩放（自动尊重 prefers-reduced-motion） |
+| `sn-sr-only` | 屏幕阅读器专用 |
+
 ### Scopeable 系统
 
 不使用 Laravel 原生多态，因为 `scope_id` 可以为 `0`（表示该 scope_type 下的全局作用域）。
@@ -2215,10 +2333,13 @@ $rocket->getPayloads(); // Collection
 ```php
 use Wsmallnews\Support\Facades\Search;
 
-// 搜索名 = 插件 ID；模块是否启用由包的配置决定（未开启则不注册来源，前端也不渲染搜索框）
+// 模块名 = 插件 ID；模块是否启用由包的配置决定（未开启则不注册来源，前端也不渲染搜索框）
 if (Utils::getConfig('search.enabled', true)) {
-    Search::engine(app(CmsPlugin::class)->getId(), Utils::getConfig('search.engine'))   // null 走全局兜底
-        ->registers(app(CmsPlugin::class)->getId(), [
+    Search::config(app(CmsPlugin::class)->getId(), [              // 模块选项：engine、page 等，增量合并
+        'engine' => Utils::getConfig('search.engine'),             // null 走全局兜底
+        // 搜索结果页地址（display = page 时回车跳转目标）：闭包接收搜索关键词，自行返回完整 URL
+        'page' => fn (?string $query) => Utils::route('search', ['q' => $query]),
+    ])->registers(app(CmsPlugin::class)->getId(), [
             [
                 'key' => 'post',
                 'model' => Utils::getPostModel(),      // 支持 morph 别名
@@ -2238,16 +2359,18 @@ Search::registers('sn-shop', [
 ]);
 
 // 查询：返回 Collection<string $group, Collection<SearchResult>>
-Search::search('关键词');                // 所有已注册模块来源合并（union）
-Search::search('关键词', 'sn-cms');      // 仅指定模块；未知搜索名抛 SupportException
+Search::search(null, '关键词');            // 所有已注册模块来源合并（union）
+Search::search('sn-cms', '关键词');      // 仅指定模块；未知模块名抛 SupportException
 ```
 
-- **来源选项**：`key`、`model`（必填）、`group`、`fields`（默认 `resolveKeywordSearchFields()` 并剔除含 `.` 的关联字段）、`limit`、`sort`、`query`（LIKE）、`scout`（Scout 索引过滤，此时 query/scopeable/fields 不生效）、`scopeable`、`title`/`description`/`cover`/`badge`（默认取 `HasSnSubject` 固有数据）、`url`（默认无链接，前端搜索永不产生 panel 地址）、`visible`、`results`（完全自定义结果，绕过引擎）。
-- **引擎（模块级）**：`database`（默认，WHERE LIKE，空白拆词多词 AND、字段间 OR）与 `scout`（`Engines\Engine` 接口扩展）。`Search::engine($search, $engine)` 按模块声明引擎（null 移除声明恢复全局兜底；可链式、与注册顺序无关、后调用覆盖），模块内所有来源统一；未声明的模块查询时走全局兜底 `config('sn-support.search.engine')`。`scout` 需模型 use `Laravel\Scout\Searchable`（PHP trait 无法条件引入，包内模型不 use，项目可通过模型配置替换子类），未安装 scout 时抛带安装指引的 `SupportException`。
-- **启用开关（注册入口门控）**：模块是否启用由各扩展包在 `packageBooted()` 用配置自行判断——未开启则**不调用 engine/registers**（来源不进注册表，前端也不渲染搜索框），如 cms 的 `if (Utils::getConfig('search.enabled', true)) { Search::engine(...)->registers(...); }`，视图侧用同一配置判断是否渲染搜索框。cms 的配置节为 `sn-cms.search.enabled` / `sn-cms.search.engine`。
+- **来源选项**：`key`、`model`（必填）、`group`、`fields`（默认 `resolveKeywordSearchFields()` 并剔除含 `.` 的关联字段）、`limit`、`sort`、`query`（LIKE）、`scout`（Scout 索引过滤，此时 query/scopeable/fields 不生效）、`scopeable`、`title`/`description`/`cover`/`badge`（默认取 `HasSnSubject` 固定数据）、`url`（默认无链接，前端搜索永不产生 panel 地址）、`view`（自定义条目视图，接收 `$result`（含 `->record` 原始模型）、`$query`；高亮用 `text_highlight($text, $query)` 助手）、`render`（自定义条目渲染闭包 `fn ($result, $query)`，优先于 view）、`visible`、`results`（完全自定义结果，绕过引擎）。条目渲染 `render` 闭包优先，否则渲染 `view`（未声明时经 `SearchSource::itemView()` 兜底为默认统一模板，视图层无需判断）；外层链接包裹由 support 统一处理，自定义部分只负责条目内容区。
+- **模块选项（模块级）**：`Search::config($module, $config)` 统一声明（增量合并、同名键后声明覆盖、值为 null 的键恢复全局兜底；可链式、与注册顺序无关），后续新增选项扩展键名即可复用同一通道。已支持：
+  - `engine`：模块搜索引擎（`database` 默认 WHERE LIKE / `scout` 需 `Laravel\Scout\Searchable`，未安装抛 `SupportException` / 引擎类名），未声明走全局兜底 `config('sn-support.search.engine')`；
+  - `page`：搜索结果页地址（display = page 时回车跳转目标）。字符串由 support 统一拼接 `?q=关键词`；闭包 `fn (?string $query) => ...` 接收搜索关键词并自行返回完整 URL，未声明走全局兜底 `config('sn-support.search.page')`。
+- **启用开关（注册入口门控）**：模块是否启用由各扩展包在 `packageBooted()` 用配置自行判断——未开启则**不调用 config/registers**（来源不进注册表，前端也不渲染搜索框），如 cms 的 `if (Utils::getConfig('search.enabled', true)) { Search::config(...)->registers(...); }`，视图侧用同一配置判断是否渲染搜索框。cms 的配置节为 `sn-cms.search.enabled` / `sn-cms.search.engine` / `sn-cms.search.display`。
 - **项目启用 scout 的步骤**：① `composer require laravel/scout`；② 给模型 use `Searchable` —— 包内模型用子类替换：新建 `App\Models\Cms\Post extends \Wsmallnews\Cms\Models\Post`（use `Searchable`）并把 `config('sn-cms.models.post')` 指向它，业务代码全部经 `Utils::getPostModel()` 解析无需改动；③ 把 `config('sn-support.search.engine')` 设为 `'scout'`（注册时未显式指定引擎的来源全部切换）。Meilisearch/Algolia 等外部引擎需先 `scout:import` 建索引，collection/database 驱动无需。
 - **相同 key 重复注册视为覆盖**（应用可借此覆盖包内置来源）。
-- **前端组件**：`<livewire:sn-support-components-search :search-key="app(CmsPlugin::class)->getId()" placeholder="搜索…" :limit="5" />`（`search-key` 绑定模块，null 搜索所有已启用模块），视图 `sn-support::livewire.components.search`，配置在 `config/sn-support.php` 的 `search` 节（`engine`、`results_limit`、`split_terms`、`case_insensitive`、`debounce`）。
+- **前端组件**：`<livewire:sn-support::components.search :module="app(CmsPlugin::class)->getId()" placeholder="搜索…" :limit="5" />`（`module` 绑定模块，null 搜索所有已启用模块），视图 `sn-support::livewire.components.search`，配置在 `config/sn-support.php` 的 `search` 节（`engine`、`display`、`page`、`results_limit`、`split_terms`、`case_insensitive`、`debounce`）。`display` 控制展示方式：`dropdown`（输入即搜浮层，默认）/ `page`（回车跳转搜索结果页，地址取模块 `page` 选项或全局兜底），各扩展包可在自己配置节覆盖（如 `sn-cms.search.display`）；结果页内容区核心组件为 `<livewire:sn-support::components.search-results :module="..." />`，页面路由由调用方定义。
 
 ### Utils 工具类
 
@@ -2272,6 +2395,7 @@ Search::search('关键词', 'sn-cms');      // 仅指定模块；未知搜索名
 | `href_format($url, $newTab, $spaMode)` | 生成带 wire:navigate 的链接 |
 | `through_cache($key, $callback)` | 缓存穿透模式 |
 | `filter_richeditor($content)` | 去除富文本中包裹图片的 anchor 标签 |
+| `text_highlight($text, $query)` | 文本关键词高亮（逐词、大小写不敏感，返回转义后含 mark 的 HTML；不限于搜索场景） |
 | `tree_to_flatten($tree)` | 递归将树结构扁平化 |
 | `scopeable_context($input)` | 创建 ScopeableContext |
 | `scopeable_query($query, $scope)` | 对查询应用 scope 过滤 |
