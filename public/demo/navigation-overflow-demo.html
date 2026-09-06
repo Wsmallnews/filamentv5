@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PC 导航溢出折叠 · 交互演示</title>
+<style>
+  :root {
+    --primary: #f97316;        /* orange-500 */
+    --primary-600: #ea580c;
+    --primary-400: #fb923c;
+    --primary-700: #c2410c;
+    --ring: rgba(255, 255, 255, .35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f3f4f6;
+    color: #111827;
+  }
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .page > p.sub { color: #6b7280; margin: 0 0 28px; font-size: 14px; }
+  section.demo { margin-bottom: 44px; }
+  section.demo > h2 { font-size: 16px; margin: 0 0 4px; }
+  section.demo > p.desc { color: #6b7280; font-size: 13px; margin: 0 0 12px; line-height: 1.7; }
+  section.demo > p.desc b { color: #111827; }
+
+  /* ===== 导航条(橙色) ===== */
+  .navbar {
+    background: var(--primary);
+    border-radius: 6px;
+    overflow: visible;
+  }
+  .navbar-inner {
+    display: flex;
+    align-items: stretch;
+    height: 64px;
+    margin: 0 auto;
+    padding: 0 16px;
+    position: relative;
+  }
+  .nav-list { display: flex; list-style: none; margin: 0; padding: 0; flex: 1 1 auto; min-width: 0; }
+  .nav-item { display: flex; position: relative; }
+  .nav-link {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-width: 96px; padding: 0 16px;
+    color: #fff; font-weight: 600; text-decoration: none; font-size: 14px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .nav-link:hover { background: var(--primary-400); }
+  .nav-link:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+  .chev { width: 14px; height: 14px; flex: none; transition: transform .2s; }
+
+  /* ===== hover 级联子菜单(演示 1,JS 管理 is-open + 延迟关闭) ===== */
+  .cascade li.is-open > .submenu { display: block; }
+  .cascade .nav-item.has-sub.is-open > .nav-link .chev { transform: rotate(180deg); }
+  .submenu {
+    display: none; position: absolute; z-index: 30; min-width: 176px;
+    margin: 0; list-style: none;
+    background: var(--primary); border-radius: 6px; padding: 5px 0;
+    box-shadow: 0 10px 24px rgba(0,0,0,.18);
+  }
+  /* 一级:向下弹;二级+:向右弹,左缘与父行重叠 5px(消除鼠标穿越间隙导致的 hover 断链) */
+  .submenu.depth-1 { top: 100%; left: 0; border-radius: 0 0 6px 6px; }
+  .submenu.depth-n { top: -5px; left: calc(100% - 5px); }
+  /* 边缘溢出时(JS 检测后加 pop-left):反向弹出 */
+  .submenu.pop-left.depth-1 { left: auto; right: 0; }
+  .submenu.pop-left.depth-n { left: auto; right: calc(100% - 5px); }
+  .submenu li { position: relative; }
+  .submenu a {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 11px 14px; color: #fff; font-weight: 500; font-size: 13.5px;
+    text-decoration: none; white-space: nowrap;
+  }
+  .submenu a:hover { background: var(--primary-400); }
+  .submenu .chev { transform: rotate(-90deg); }
+  /* 箭头方向跟随显隐:子菜单展开时,该项的向右箭头转为向下 */
+  .submenu li.is-open > a .chev { transform: rotate(0deg); }
+  /* 主行激活态(替代 inline style,供两种风格分别定义);primary 选中为更深主题色,hover 为提亮色 */
+  .nav-item.nav-active { background: var(--primary-600); }
+  .nav-item.nav-active:hover { background: var(--primary-600); }
+
+  /* ===== "更多"按钮(纯图标,省空间) ===== */
+  .nav-more {
+    display: flex; align-items: center; gap: 6px;
+    position: relative; flex: none;
+  }
+  .nav-more > button {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 48px; height: 100%; padding: 0 4px;
+    background: none; border: 0; color: #fff;
+    cursor: pointer; white-space: nowrap;
+  }
+  .nav-more > button:hover { background: var(--primary-400); }
+  .nav-more.open > button { background: var(--primary-400); }
+  .icon-ellipsis { width: 24px; height: 24px; }
+  /* 折叠项中有激活态时,更多按钮高亮(深色,同选中态) */
+  .nav-more.has-active { background: var(--primary-600); }
+  .nav-more.has-active > button:hover, .nav-more.has-active.open > button { background: var(--primary-600); }
+  .more-menu {
+    display: none; position: absolute; top: 100%; right: 0; z-index: 40;
+    min-width: 248px; max-height: 60vh; overflow-y: auto;
+    background: var(--primary); border-radius: 0 0 6px 6px; padding: 4px 0;
+    box-shadow: 0 14px 30px rgba(0,0,0,.22);
+  }
+  .nav-more.open .more-menu { display: block; }
+
+  /* ===== 手风琴(更多菜单/移动端共用,递归) ===== */
+  .acc { display: flex; flex-direction: column; }
+  .acc-row { display: flex; align-items: stretch; }
+  .acc-link {
+    flex: 1 1 auto; display: flex; align-items: center; gap: 8px;
+    padding: 11px 14px; color: #fff; font-weight: 600; font-size: 13.5px;
+    text-decoration: none; white-space: nowrap; cursor: pointer; border: 0; background: none;
+    text-align: left; min-width: 0;
+  }
+  .acc-link.leaf-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .acc-toggle {
+    flex: none; display: flex; align-items: center; justify-content: center;
+    width: 40px; background: none; border: 0; color: #fff; cursor: pointer;
+  }
+  /* 纯展开模式:整行一体 hover(文字+箭头联动高亮);link 模式(直达+箭头)保持分离 */
+  .acc-row:has(> .row-toggle):hover .row-toggle,
+  .acc-row:has(> .row-toggle):hover .acc-toggle { background: var(--primary-400); }
+  .acc-toggle:hover { background: var(--primary-400); }
+  .acc-sub {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows .25s ease;
+  }
+  .acc-sub > .acc { overflow: hidden; }
+  .acc-item.open > .acc-sub { grid-template-rows: 1fr; }
+  .acc-item.open > .acc-row .chev { transform: rotate(180deg); }
+  .acc-leaf { display: flex; }
+  .acc-leaf a {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; color: rgba(255, 255, 255, .93);
+    font-size: 13.5px; font-weight: 400;
+    text-decoration: none; white-space: nowrap;
+  }
+  .acc-leaf a:hover { background: var(--primary-400); }
+  /* 层级缩进块(重复 N 个,等效 Tailwind w-5 = 20px) */
+  .indent { width: 20px; flex: none; }
+
+  /* ===== 宽度滑块 ===== */
+  .width-ctrl { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; color: #374151; }
+  .width-ctrl input[type=range] { flex: 1; accent-color: var(--primary-600); }
+  .width-ctrl .val { font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; }
+
+  /* ===== toast ===== */
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+    background: #111827; color: #fff; padding: 10px 18px; border-radius: 8px;
+    font-size: 13.5px; opacity: 0; pointer-events: none; transition: all .25s; z-index: 99;
+    max-width: 82vw; box-shadow: 0 10px 30px rgba(0,0,0,.3);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast .t { color: var(--primary-400); font-weight: 600; }
+
+  .note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 10px 14px; font-size: 13px; color: #92400e; margin-top: 10px; line-height: 1.7; }
+
+  /* ===== 整树展开预览(演示 1) ===== */
+  .tree-preview {
+    display: none; margin-top: 12px; background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 6px; padding: 14px 18px; font-size: 13px; line-height: 1.9;
+  }
+  .tree-preview.show { display: block; }
+  .tree-preview .branch { color: var(--primary-700); font-weight: 600; }
+  .tree-preview .leaf { color: #374151; }
+  .tree-preview .depth-tag { display: inline-block; font-size: 11px; color: #9ca3af; margin-right: 6px; font-weight: 400; }
+  .tree-toggle {
+    margin-top: 10px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px;
+    padding: 5px 12px; font-size: 13px; cursor: pointer; color: #374151;
+  }
+  .tree-toggle:hover { border-color: var(--primary-600); color: var(--primary-700); }
+
+  /* ===== 风格 B:minimal(白底简约,支持暗黑) ===== */
+  .navbar.minimal { background: #fff; border-bottom: 1px solid #e5e7eb; border-radius: 6px 6px 0 0; }
+  .navbar.minimal .nav-link { color: var(--primary-600); font-weight: 600; }
+  .navbar.minimal .nav-link:hover { background: #f3f4f6; }
+  .navbar.minimal .nav-item.nav-active { background: #ffedd5; }
+  .navbar.minimal .nav-item.nav-active .nav-link { color: var(--primary-700); }
+  .navbar.minimal .submenu { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.08); }
+  .navbar.minimal .submenu a { color: #1f2937; }
+  .navbar.minimal .submenu a:hover { background: #f3f4f6; color: var(--primary-700); }
+  .navbar.minimal .submenu li.is-open > a { color: var(--primary-700); }
+
+  /* 暗黑(仅演示 4 区域切换):风格 A 主题色不变;风格 B 翻转为深底 */
+  #demo4.theme-dark .navbar.minimal { background: #111827; border-color: #374151; }
+  #demo4.theme-dark .navbar.minimal .nav-link { color: var(--primary-400); }
+  #demo4.theme-dark .navbar.minimal .nav-link:hover { background: #1f2937; }
+  #demo4.theme-dark .navbar.minimal .nav-item.nav-active { background: rgba(249, 115, 22, .16); }
+  #demo4.theme-dark .navbar.minimal .nav-item.nav-active .nav-link { color: var(--primary-300, #fdba74); }
+  #demo4.theme-dark .navbar.minimal .submenu { background: #111827; border-color: #374151; box-shadow: 0 10px 24px rgba(0,0,0,.5); }
+  #demo4.theme-dark .navbar.minimal .submenu a { color: #e5e7eb; }
+  #demo4.theme-dark .navbar.minimal .submenu a:hover { background: #1f2937; color: var(--primary-300, #fdba74); }
+  #demo4.theme-dark .navbar.minimal .submenu li.is-open > a { color: var(--primary-300, #fdba74); }
+
+  /* ===== 演示 5:minimal 手风琴配色(白底/暗黑深底)+ 手机容器 ===== */
+  .acc.minimal .acc-link { color: var(--primary-600); }
+  .acc.minimal .acc-toggle { color: var(--primary-600); }
+  .acc.minimal .acc-leaf a { color: #1f2937; }
+  .acc.minimal .acc-row:has(> .row-toggle):hover .row-toggle,
+  .acc.minimal .acc-row:has(> .row-toggle):hover .acc-toggle { background: #f3f4f6; }
+  .acc.minimal .acc-toggle:hover { background: #f3f4f6; }
+  .acc.minimal .acc-leaf a:hover { background: #f3f4f6; color: var(--primary-700); }
+  .acc.minimal .acc-item.nav-active > .acc-row .acc-link { color: var(--primary-700); }
+
+  #demo5.theme-dark .acc.minimal .acc-link { color: var(--primary-400); }
+  #demo5.theme-dark .acc.minimal .acc-toggle { color: var(--primary-400); }
+  #demo5.theme-dark .acc.minimal .acc-leaf a { color: #e5e7eb; }
+  #demo5.theme-dark .acc.minimal .acc-row:has(> .row-toggle):hover .row-toggle,
+  #demo5.theme-dark .acc.minimal .acc-row:has(> .row-toggle):hover .acc-toggle { background: #1f2937; }
+  #demo5.theme-dark .acc.minimal .acc-toggle:hover { background: #1f2937; }
+  #demo5.theme-dark .acc.minimal .acc-leaf a:hover { background: #1f2937; color: var(--primary-300, #fdba74); }
+
+  /* 手机容器(模拟移动端菜单面板) */
+  .phone-row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .phone {
+    width: 340px; border: 8px solid #1f2937; border-radius: 26px; overflow: hidden;
+    background: #f9fafb; box-shadow: 0 12px 30px rgba(0,0,0,.15); flex: none;
+  }
+  .phone-head {
+    height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 16px;
+    font-size: 13px; color: #6b7280; background: #fff; border-bottom: 1px solid #e5e7eb;
+  }
+  #demo5.theme-dark .phone { background: #030712; }
+  #demo5.theme-dark .phone-head { background: #111827; color: #9ca3af; border-color: #374151; }
+  .m-menu { max-height: 500px; overflow-y: auto; }
+  .m-menu.primary-bg { background: var(--primary); }
+  .m-menu.minimal-bg { background: #fff; }
+  #demo5.theme-dark .m-menu.minimal-bg { background: #111827; }
+  .m-login { display: flex; gap: 10px; padding: 14px 16px; }
+  .m-login a {
+    flex: 1; text-align: center; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: 600;
+    text-decoration: none;
+  }
+  .m-login.primary a:first-child { background: #fff; color: var(--primary-600); }
+  .m-login.primary a:last-child { border: 1px solid rgba(255,255,255,.6); color: #fff; }
+  .m-login.minimal a:first-child { background: var(--primary-600); color: #fff; }
+  .m-login.minimal a:last-child { border: 1px solid #d1d5db; color: #374151; }
+  #demo5.theme-dark .m-login.minimal a:first-child { background: var(--primary-600); color: #fff; }
+  #demo5.theme-dark .m-login.minimal a:last-child { border-color: #4b5563; color: #d1d5db; }
+
+  /* “更多”下拉宽度面板 */
+  .more-panel-wrap { flex: none; width: 248px; }
+  .more-panel-label { font-size: 12px; color: #6b7280; margin-bottom: 8px; text-align: center; }
+  .more-panel {
+    background: var(--primary); border-radius: 0 0 6px 6px; padding: 4px 0;
+    box-shadow: 0 14px 30px rgba(0,0,0,.22); max-height: 500px; overflow-y: auto;
+  }
+  .panel-tag { display: inline-block; font-size: 12px; background: #e5e7eb; color: #374151; border-radius: 4px; padding: 2px 8px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>PC 导航溢出折叠 · 交互演示</h1>
+  <p class="sub">三个演示对应三个待决策点:① 主行无限级 hover 级联(父项可点击直达第一个叶子);② 溢出折叠 + 更多下拉「纯展开」;③ 溢出折叠 + 更多下拉「父项直达叶子 + 箭头展开」。演示数据含 4 级层级,验证无限级递归。点击任何链接会弹 toast 模拟跳转,不会真的跳走。</p>
+
+  <section class="demo" id="demo1">
+    <h2>演示 1 · 主行无限级 hover 级联(trigger = hover,父项可点击)</h2>
+    <p class="desc"><b>hover 父项 → 展开子菜单(向右无限级联);点击父项 → 直达第一个可用叶子</b>。试试沿「新闻中心 → 公司新闻 → 最新动态 → 2026 年度活动」hover 四级;靠右的「帮助支持」子菜单会自动<b>向左弹</b>(JS 实时边缘检测,不是写死的);拖动宽度滑块把「帮助支持」挤到右缘看效果。子菜单带 300ms 关闭延迟 + 与父行 5px 重叠,鼠标斜向穿越不会断链。</p>
+    <div class="width-ctrl"><span>容器宽度</span><input type="range" min="1000" max="1168" value="1040" id="slider1"><span class="val" id="slider1val">1040px</span></div>
+    <div class="navbar">
+      <div class="navbar-inner" id="bar1" style="width:1040px"></div>
+    </div>
+    <button class="tree-toggle" id="treeToggle1" type="button">展开整树预览(查看全部层级数据)</button>
+    <div class="tree-preview" id="tree1"></div>
+    <div class="note">对应你提的规则:子菜单 hover 弹出 ⇒ 父项可点击(点击直达第一个叶子)。此时父项是真实 &lt;a href&gt;,中键/右键新标签、SEO、复制链接都正常。hover 展开由 JS 管理(打开即时、关闭延迟 300ms),真实项目用 Alpine 实现同款逻辑。</div>
+  </section>
+
+  <section class="demo" id="demo2">
+    <h2>演示 2 · 溢出折叠 + 更多下拉「纯展开」(trigger = click 的形态)</h2>
+    <p class="desc">拖动滑块改变导航条宽度,看<b>「更多」按钮如何动态占据最后一个能放下的位置</b>;被折叠项中有激活态时「更多」会高亮(点击「网站地图」试试)。更多下拉里<b>父项点击只负责展开分组,不可跳转</b>,叶子才是链接 —— 与移动端手风琴交互一致。</p>
+    <div class="width-ctrl"><span>容器宽度</span><input type="range" min="600" max="1168" value="1168" id="slider2"><span class="val" id="slider2val">1168px</span></div>
+    <div class="navbar"><div class="navbar-inner" id="bar2"></div></div>
+    <div class="note">对应规则:子菜单 click 弹出 ⇒ 点击语义被「展开/收起」占用,父项纯展开。下拉内部是递归手风琴,任意层级。</div>
+  </section>
+
+  <section class="demo" id="demo3">
+    <h2>演示 3 · 溢出折叠 + 更多下拉「父项直达叶子 + 箭头展开」(trigger = hover 的形态)</h2>
+    <p class="desc">同样的折叠逻辑,区别在更多下拉里:<b>父项文字本身是链接(直达第一个叶子),右侧箭头单独负责展开</b>。hover 父项文字可见下划线反馈。适合「hover 模式下主行父项能点击,收进更多后依然能点击」的一致性诉求。</p>
+    <div class="width-ctrl"><span>容器宽度</span><input type="range" min="600" max="1168" value="1168" id="slider3"><span class="val" id="slider3val">1168px</span></div>
+    <div class="navbar"><div class="navbar-inner" id="bar3"></div></div>
+    <div class="note">箭头与文字分离点击目标,两者互不冲突;若你觉得箭头热区太小,也可以整行点击直达、长按/hover 出子级(不推荐,演示即可对比)。</div>
+  </section>
+
+  <section class="demo" id="demo4">
+    <h2>演示 4 · 导航风格(style = primary / minimal)</h2>
+    <p class="desc">同一条 hover 级联导航的两种皮肤。<b>primary</b>:主题色底 + 白字 + hover 为更浅主题色 + 选中为更深主题色;<b>minimal</b>:白底 + 主题色字 + 浅灰 hover + 选中为主题色浅底、文字加深(暗黑模式下自动翻转为深底 + 主题色浅亮字)。点按钮切换暗黑验证。「联系我们」为选中态示例。</p>
+    <button class="tree-toggle" id="darkToggle" type="button" style="margin-top:0;margin-bottom:12px">切换暗黑(仅本演示区)</button>
+    <div class="navbar">
+      <div class="navbar-inner" id="bar4a"></div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="navbar minimal">
+      <div class="navbar-inner" id="bar4b"></div>
+    </div>
+    <div class="note">对应配置 <b>navigation.style</b>:primary(默认,与现有站点一致)/ minimal(简约风,亮暗自适应)。两种风格共用同一套折叠、级联、边缘检测逻辑,只是 CSS 变量不同。</div>
+  </section>
+
+  <section class="demo" id="demo5">
+    <h2>演示 5 · 手风琴专项(层级区分 + 移动端配色)</h2>
+    <p class="desc">手风琴父子级的区分:<b>子级文字缩进(缩进做在链接元素内部 padding 上,hover 背景通栏变色,同移动端现有方案)+ 父级字重 600 / 叶子字重 400</b>。三个面板:两部手机模拟移动端菜单(primary / minimal 两种配色,含底部登录注册区),右侧为「更多」下拉实际宽度(248px)。默认展开「新闻中心」一支展示层级效果。点按钮切换暗黑验证 minimal。</p>
+    <button class="tree-toggle" id="darkToggle5" type="button" style="margin-top:0;margin-bottom:12px">切换暗黑(仅本演示区)</button>
+    <div class="phone-row">
+      <div class="phone">
+        <div class="phone-head">☰ 移动端菜单 · primary</div>
+        <div class="m-menu primary-bg" id="m5a"></div>
+      </div>
+      <div class="phone">
+        <div class="phone-head">☰ 移动端菜单 · minimal</div>
+        <div class="m-menu minimal-bg" id="m5b"></div>
+      </div>
+      <div class="more-panel-wrap">
+        <div class="more-panel-label">「更多」下拉宽度 248px · primary</div>
+        <div class="more-panel" id="m5c"></div>
+      </div>
+    </div>
+    <div class="note">移动端交互保持现状(手风琴 + 点击展开,不参与 submenu 配置),但配色按 <b>navigation.style</b> 同步切换:primary 沿用主题色面板(行 hover / 选中为更深主题色);minimal 为白底(暗黑深底)+ 主题色文字 + 浅灰 hover,登录注册按钮同步换肤。层级缩进在链接内部,hover 背景通栏(无竖线)。</div>
+  </section>
+</div>
+<div id="toast"></div>
+
+<script>
+/* ============ 演示数据(4 级层级) ============ */
+const NAV = [
+  { name: '首页', url: '#/home' },
+  { name: '新闻中心', children: [
+      { name: '公司新闻', children: [
+          { name: '最新动态', children: [
+              { name: '2026 年度活动', url: '#/news/corp/latest/2026' },
+              { name: '历史活动', url: '#/news/corp/latest/history' },
+          ]},
+          { name: '媒体报道', url: '#/news/corp/media' },
+      ]},
+      { name: '行业资讯', children: [
+          { name: '政策法规', url: '#/news/industry/policy' },
+          { name: '市场观察', url: '#/news/industry/market' },
+      ]},
+      { name: '通知公告', url: '#/news/notices' },
+  ]},
+  { name: '产品服务', children: [
+      { name: '硬件产品', children: [
+          { name: '服务器', url: '#/prod/hw/server' },
+          { name: '存储设备', url: '#/prod/hw/storage' },
+      ]},
+      { name: '软件产品', children: [
+          { name: '管理后台', url: '#/prod/sw/admin' },
+          { name: '移动端', url: '#/prod/sw/mobile' },
+      ]},
+  ]},
+  { name: '关于我们', children: [
+      { name: '公司简介', url: '#/about/profile' },
+      { name: '发展历程', children: [
+          { name: '里程碑', children: [
+              { name: '2024 上市', url: '#/about/history/ms/2024' },
+              { name: '2020 融资', url: '#/about/history/ms/2020' },
+          ]},
+      ]},
+      { name: '联系方式', url: '#/about/contact' },
+  ]},
+  { name: '联系我们', url: '#/contact' },
+  { name: '招贤纳士', url: '#/jobs' },
+  { name: '合作伙伴', children: [
+      { name: '渠道伙伴', url: '#/partners/channel' },
+      { name: '技术生态', url: '#/partners/eco' },
+  ]},
+  { name: '投资者关系', children: [
+      { name: '财报下载', url: '#/ir/reports' },
+      { name: '公告披露', url: '#/ir/announce' },
+  ]},
+  { name: '下载中心', url: '#/download' },
+  { name: '帮助支持', children: [
+      { name: '常见问题', children: [
+          { name: '账号问题', url: '#/help/faq/account' },
+          { name: '支付问题', url: '#/help/faq/pay' },
+      ]},
+      { name: '在线工单', url: '#/help/ticket' },
+  ]},
+  { name: '会员服务', url: '#/member' },
+  { name: '品牌故事', url: '#/story' },
+  { name: '媒体报道', url: '#/press' },
+  { name: '网站地图', url: '#/sitemap', active: true },
+];
+
+/* ============ 工具 ============ */
+const CHEV_DOWN = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+const CHEV_RIGHT = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+const ELLIPSIS = '<svg class="icon-ellipsis" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>';
+
+function pathOf(node) { return node.__path || node.name; }
+function firstLeaf(node) { while (node.children && node.children.length) node = node.children[0]; return node; }
+function hasChildren(node) { return !!(node.children && node.children.length); }
+
+function toast(html) {
+  const t = document.getElementById('toast');
+  t.innerHTML = html;
+  t.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* 拦截所有演示链接 */
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a) return;
+  e.preventDefault();
+  const name = a.dataset.name || a.textContent.trim();
+  toast(`点击「${name}」 → 演示页不真实跳转(真实站点将打开 <span class="t">${a.getAttribute('href')}</span>)`);
+});
+
+/* ============ 演示 1:hover 级联(递归渲染 + JS hover 管理) ============ */
+function cascadeSubmenu(children, depth) {
+  const cls = ['submenu', depth === 1 ? 'depth-1' : 'depth-n'].join(' ');
+  return `<ul class="${cls}">` + children.map(c => {
+    const sub = hasChildren(c) ? cascadeSubmenu(c.children, depth + 1) : '';
+    return `<li class="${hasChildren(c) ? 'has-sub' : ''}">
+      <a href="${hasChildren(c) ? '#' + firstLeaf(c).url.slice(1) : c.url}" data-name="${c.name}">
+        <span>${c.name}</span>${hasChildren(c) ? CHEV_RIGHT : ''}
+      </a>${sub}</li>`;
+  }).join('') + '</ul>';
+}
+
+function renderDemo1() {
+  renderCascadeBar('bar1');
+}
+
+/* 通用:渲染一个 hover 级联导航条(演示 1 / 演示 4 共用;activeName 指定选中态项) */
+function renderCascadeBar(barId, activeName) {
+  const bar = document.getElementById(barId);
+  const items = NAV.slice(0, 10);
+  bar.innerHTML = `<ul class="nav-list cascade">` + items.map(n => {
+    const sub = hasChildren(n) ? cascadeSubmenu(n.children, 1) : '';
+    const active = n.active || (activeName && n.name === activeName);
+    return `<li class="nav-item ${hasChildren(n) ? 'has-sub' : ''} ${active ? 'nav-active' : ''}">
+      <a class="nav-link" href="${hasChildren(n) ? '#' + firstLeaf(n).url.slice(1) : n.url}" data-name="${n.name}">
+        ${n.name}${hasChildren(n) ? CHEV_DOWN : ''}
+      </a>${sub}</li>`;
+  }).join('') + '</ul>';
+  setupCascade(bar);
+}
+
+/* hover 级联交互:打开即时、关闭延迟 300ms、祖先链保持、右缘检测反向弹 */
+function setupCascade(bar) {
+  let closeTimer = null;
+  const clearClose = () => { if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; } };
+  const closeAll = () => bar.querySelectorAll('li.is-open').forEach(el => el.classList.remove('is-open'));
+
+  bar.addEventListener('mouseover', e => {
+    clearClose();
+    const li = e.target.closest('li.has-sub');
+    if (!li) {
+      /* 鼠标在普通项/主行空白上:收起所有子菜单(子菜单内部除外) */
+      if (!e.target.closest('.submenu')) closeAll();
+      return;
+    }
+    /* 计算当前项的祖先链,保持链上打开,关闭其余 */
+    const chain = new Set();
+    let p = li;
+    while (p && p !== bar) { chain.add(p); p = p.parentElement ? p.parentElement.closest('li.has-sub') : null; }
+    bar.querySelectorAll('li.is-open').forEach(el => { if (!chain.has(el)) el.classList.remove('is-open'); });
+    li.classList.add('is-open');
+
+    /* 打开后测量:右缘超出视口则反向弹 */
+    const sub = li.querySelector(':scope > .submenu');
+    if (sub) {
+      sub.classList.remove('pop-left');
+      const r = sub.getBoundingClientRect();
+      if (r.right > window.innerWidth - 8) sub.classList.add('pop-left');
+    }
+  });
+
+  /* 鼠标离开整个菜单树(含弹出的子菜单)后延迟关闭 */
+  bar.addEventListener('mouseleave', () => {
+    clearClose();
+    closeTimer = setTimeout(closeAll, 300);
+  });
+}
+
+/* 整树展开预览:平铺显示全部层级 */
+function renderTreePreview() {
+  const treeHtml = (node, depth) => {
+    if (!hasChildren(node)) {
+      return `<div class="leaf" style="padding-left:${depth * 20}px">▪ ${node.name}</div>`;
+    }
+    return `<div class="branch" style="padding-left:${depth * 20}px">▸ ${node.name} <span class="depth-tag">第 ${depth + 1} 级</span></div>`
+      + node.children.map(c => treeHtml(c, depth + 1)).join('');
+  };
+  document.getElementById('tree1').innerHTML = NAV.slice(0, 10).map(n => treeHtml(n, 0)).join('');
+  document.getElementById('treeToggle1').addEventListener('click', () => {
+    document.getElementById('tree1').classList.toggle('show');
+  });
+}
+
+/* ============ 手风琴渲染(更多菜单/移动端共用,递归) ============ */
+/* 缩进 = 链接内部重复 depth-1 个宽度块(对应 Tailwind w-5):hover 背景通栏,纯 Tailwind class 思路 */
+function accordionItem(node, mode, depth = 1) {
+  /* mode: 'expand' 纯展开 | 'link' 直达叶子+箭头 */
+  const spacers = '<div class="indent"></div>'.repeat(Math.max(0, depth - 1));
+  if (!hasChildren(node)) {
+    return `<div class="acc-leaf"><a href="${node.url}" data-name="${node.name}">${spacers}${node.name}</a></div>`;
+  }
+  const leaf = firstLeaf(node);
+  let row;
+  if (mode === 'link') {
+    row = `<div class="acc-row">
+        <a class="acc-link leaf-link" href="${'#' + leaf.url.slice(1)}" data-name="${node.name}">${spacers}${node.name}</a>
+        <button class="acc-toggle" type="button" aria-label="展开 ${node.name}">${CHEV_DOWN}</button>
+      </div>`;
+  } else {
+    row = `<div class="acc-row">
+        <button class="acc-link row-toggle" type="button" data-name="${node.name}">${spacers}${node.name}</button>
+        <span class="acc-toggle">${CHEV_DOWN}</span>
+      </div>`;
+  }
+  const subs = node.children.map(c => accordionItem(c, mode, depth + 1)).join('');
+  return `<div class="acc-item">${row}<div class="acc-sub"><div class="acc">${subs}</div></div></div>`;
+}
+
+/* ============ 演示 5:手风琴专项(层级区分 + 移动端配色) ============ */
+function bindAccordion(container) {
+  container.addEventListener('click', (e) => {
+    const rowToggle = e.target.closest('.acc-link.row-toggle');
+    const accToggle = e.target.closest('.acc-toggle');
+    const trigger = rowToggle || accToggle;
+    if (trigger) {
+      const item = trigger.closest('.acc-item');
+      if (item) item.classList.toggle('open');
+      e.stopPropagation();
+    }
+  });
+}
+
+function renderDemo5() {
+  const loginHtml = (variant) => `
+    <div class="m-login ${variant}">
+      <a href="#/login" data-name="登录">登录</a>
+      <a href="#/register" data-name="注册">注册</a>
+    </div>`;
+  const treeHtml = (minimal) =>
+    '<div class="acc' + (minimal ? ' minimal' : '') + '">'
+    + NAV.slice(0, 8).map(n => accordionItem(n, 'expand')).join('')
+    + '</div>';
+
+  /* 手机 primary 版 */
+  const m5a = document.getElementById('m5a');
+  m5a.innerHTML = treeHtml(false) + loginHtml('primary');
+  /* 手机 minimal 版 */
+  const m5b = document.getElementById('m5b');
+  m5b.innerHTML = treeHtml(true) + loginHtml('minimal');
+  /* “更多”下拉宽度面板(primary) */
+  const m5c = document.getElementById('m5c');
+  m5c.innerHTML = treeHtml(false);
+
+  /* 默认展开「新闻中心 → 公司新闻」一支,展示层级缩进与竖线 */
+  [m5a, m5b, m5c].forEach(el => {
+    const items = [...el.querySelectorAll('.acc-item')];
+    const news = items.find(i => (i.querySelector(':scope > .acc-row .acc-link')?.textContent || '').startsWith('新闻中心'));
+    if (news) news.classList.add('open');
+    bindAccordion(el);
+  });
+}
+function renderOverflowBar(barId, mode) {
+  const bar = document.getElementById(barId);
+  bar.innerHTML = `
+    <ul class="nav-list" role="menubar"></ul>
+    <div class="nav-more">
+      <button type="button" aria-label="更多">${ELLIPSIS}</button>
+      <div class="more-menu"><div class="acc"></div></div>
+    </div>`;
+
+  const list = bar.querySelector('.nav-list');
+  const moreWrap = bar.querySelector('.nav-more');
+  const moreBtn = moreWrap.querySelector('button');
+  const moreMenu = moreWrap.querySelector('.more-menu .acc');
+
+  /* 主行项:全部渲染(与真实站点一致,服务端已有全量数据) */
+  list.innerHTML = NAV.map(n => {
+    const href = hasChildren(n) ? '#' + firstLeaf(n).url.slice(1) : n.url;
+    return `<li class="nav-item ${n.active ? 'nav-active' : ''}">
+      <a class="nav-link" href="${href}" data-name="${n.name}">${n.name}${hasChildren(n) ? CHEV_DOWN : ''}</a>
+    </li>`;
+  }).join('');
+
+  function apply() {
+    const items = [...list.children];
+    /* 先全部显示 + 显示更多按钮,测量自然宽度 */
+    items.forEach(li => li.style.display = '');
+    const avail = list.clientWidth;
+    moreWrap.style.display = '';
+    const moreW = moreWrap.offsetWidth;
+    let used = 0, cut = items.length;
+    for (let i = 0; i < items.length; i++) {
+      used += items[i].offsetWidth;
+      if (used + moreW > avail) { cut = i; break; }
+    }
+    const hidden = items.slice(cut);
+    if (hidden.length) {
+      hidden.forEach(li => li.style.display = 'none');
+      moreMenu.innerHTML = NAV.slice(cut).map(n => accordionItem(n, mode)).join('');
+      /* 被折叠项中有激活态 → 更多按钮高亮 */
+      const hasActive = NAV.slice(cut).some(n => n.active);
+      moreWrap.classList.toggle('has-active', hasActive);
+    } else {
+      moreWrap.style.display = 'none';
+      moreWrap.classList.remove('has-active');
+    }
+  }
+
+  moreBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    moreWrap.classList.toggle('open');
+  });
+  document.addEventListener('click', () => moreWrap.classList.remove('open'));
+
+  /* 手风琴展开/收起(事件委托,可复用于任何手风琴容器) */
+  bindAccordion(bar);
+
+  new ResizeObserver(apply).observe(bar);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(apply);
+  apply();
+}
+
+/* ============ 宽度滑块 ============ */
+function bindSlider(sliderId, valId, barId) {
+  const s = document.getElementById(sliderId), v = document.getElementById(valId);
+  s.addEventListener('input', () => {
+    v.textContent = s.value + 'px';
+    document.getElementById(barId).style.width = s.value + 'px';
+  });
+}
+
+renderDemo1();
+renderTreePreview();
+renderOverflowBar('bar2', 'expand');
+renderOverflowBar('bar3', 'link');
+renderCascadeBar('bar4a', '联系我们');
+renderCascadeBar('bar4b', '联系我们');
+renderDemo5();
+document.getElementById('darkToggle').addEventListener('click', (e) => {
+  const dark = document.getElementById('demo4').classList.toggle('theme-dark');
+  e.currentTarget.textContent = dark ? '切换亮色' : '切换暗黑(仅本演示区)';
+});
+document.getElementById('darkToggle5').addEventListener('click', (e) => {
+  const dark = document.getElementById('demo5').classList.toggle('theme-dark');
+  e.currentTarget.textContent = dark ? '切换亮色' : '切换暗黑(仅本演示区)';
+});
+bindSlider('slider1', 'slider1val', 'bar1');
+bindSlider('slider2', 'slider2val', 'bar2');
+bindSlider('slider3', 'slider3val', 'bar3');
+</script>
+</body>
+</html>

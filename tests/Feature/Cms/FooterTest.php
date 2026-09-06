@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Wsmallnews\Cms\Enums\NavigationTypeStatus;
 use Wsmallnews\Cms\Models\Navigation;
 use Wsmallnews\Cms\Models\NavigationType;
@@ -69,6 +70,42 @@ it('底部导航为空时仅显示品牌区与合规条', function () {
 
     // 无导航区：快捷条 aria-label 不出现
     $response->assertDontSee('页脚快捷导航');
+});
+
+it('页头、导航、页脚的 container 内容层均带防贴边留白 sn-page-x', function () {
+    $response = $this->get('/cms');
+
+    $response->assertOk()
+        // 页头与页脚内容容器
+        ->assertSee('container mx-auto sn-page-x', false)
+        // 导航条内容容器（不再用 px-4 sm:px-0 在 sm+ 复位留白）
+        ->assertSee('container hidden lg:flex h-16 mx-auto sn-page-x', false)
+        ->assertDontSee('sm:px-0', false);
+});
+
+it('区块间距与卡片内边距消费设计令牌而非硬编码响应式对', function () {
+    $response = $this->get('/cms');
+
+    $response->assertOk()
+        // 首页轮播图与文章列表的区块间距走 sn-gap（lg 自动 4→6）
+        ->assertSee('lg:flex-row sn-gap', false)
+        // 不再有硬编码间距对与固定表单卡 padding
+        ->assertDontSee('lg:gap-4', false)
+        ->assertDontSee('px-4 py-8', false);
+});
+
+it('底部导航类型缺失时不查询 navigation 表（短路返回空集合）', function () {
+    // beforeEach 只创建了头部导航类型，footer scope 的类型不存在
+    DB::enableQueryLog();
+
+    $this->get('/cms')->assertOk();
+
+    // 页面头部导航（sn-cms scope）正常查询，但不得出现任何 footer scope 的 navigation 查询
+    $footerQueries = collect(DB::getQueryLog())
+        ->filter(fn ($log) => str_contains($log['query'], 'sn_navigations'))
+        ->filter(fn ($log) => in_array('sn-cms-footer', $log['bindings']));
+
+    expect($footerQueries)->toBeEmpty();
 });
 
 it('头部导航树的节点不再进入 footer（footer_show 回退已移除）', function () {

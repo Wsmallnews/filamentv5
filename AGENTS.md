@@ -2442,3 +2442,17 @@ Search::search('sn-cms', '关键词');      // 仅指定模块；未知模块名
 - **扩展 `ActivityLogs\BaseResource` 时不要覆盖 `getEloquentQuery()`**——除非你理解 causer 上移除租户全局作用域的逻辑。
 
 </laravel-boost-guidelines>
+
+=== project conventions rules ===
+
+# 项目惯例(用户指定)
+
+## 演示文件(public/demo/)
+
+- `public/demo/` 目录专门存放交互演示文件(静态 HTML 原型等),通过 `http://<project>.test/demo/<file>` 访问。
+- **所有演示文件永久保留作历史查看,不要删除**;做新演示时创建新文件,不要覆盖旧演示文件。
+
+## 执行计划(.zcode/plans/)
+
+- 跨会话的详细执行计划放在 `.zcode/plans/` 目录,命名 `plan-<topic>.md`(如 `plan-navigation-overflow.md`),随 git 提交。
+- 计划必须自包含:背景、已确认决策(标注"与用户确认过,不要重新讨论")、实现步骤、验收标准,供后续新会话在无此前对话上下文时直接执行。

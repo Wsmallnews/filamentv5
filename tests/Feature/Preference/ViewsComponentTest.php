@@ -61,6 +61,25 @@ it('views 列表行保持 flex 布局，窄屏不换行不溢出（回归）', f
     expect($html)->toContain('sn-list-row flex items-center gap-3');
 });
 
+it('views 列表头的两端对齐与换行由 sn-list-header 统一提供（回归）', function () {
+    Filament::setCurrentPanel('admin');
+
+    $admin = User::factory()->create();
+    $post = createViewedPost($admin);
+    $preference = createViewPreference($admin, $post);
+
+    $html = (string) livewire(Views::class, [
+        'preferencer' => $admin,
+        'views' => collect([$preference]),
+        'listType' => 'preferencer',
+    ])->html();
+
+    // justify-between/flex-wrap/gap 已内置于 sn-list-header，使用处不再手写修饰类
+    expect($html)->toContain('class="sn-list-header"')
+        ->and($html)->not->toContain('sn-list-header justify-between')
+        ->and($html)->not->toContain('sn-list-header flex-wrap');
+});
+
 it('views 组件正常渲染浏览记录条目', function () {
     Filament::setCurrentPanel('admin');
 
