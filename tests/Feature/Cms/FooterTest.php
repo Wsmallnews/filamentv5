@@ -78,8 +78,8 @@ it('页头、导航、页脚的 container 内容层均带防贴边留白 sn-page
     $response->assertOk()
         // 页头与页脚内容容器
         ->assertSee('container mx-auto sn-page-x', false)
-        // 导航条内容容器（不再用 px-4 sm:px-0 在 sm+ 复位留白）
-        ->assertSee('container hidden lg:flex h-16 mx-auto sn-page-x', false)
+        // 导航条（组件只占 w-full，容器由调用处外层包裹）
+        ->assertSee('hidden lg:flex h-16 w-full', false)
         ->assertDontSee('sm:px-0', false);
 });
 

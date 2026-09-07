@@ -5,3 +5,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | addons/*/resources/js/** | .ai/rules/js.md |
+| addons/cms/resources/views/** | .ai/rules/views.md |

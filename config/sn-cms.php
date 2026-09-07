@@ -5,6 +5,7 @@ use Wsmallnews\Cms\Enums;
 use Wsmallnews\Cms\Filament\Pages\GeneralSetting as GeneralSettingPage;
 use Wsmallnews\Cms\Filament\Pages\Navigation\Footer\FooterNavigationPage;
 use Wsmallnews\Cms\Filament\Pages\Navigation\NavigationPage;
+use Wsmallnews\Cms\Filament\Resources\Links\LinkResource;
 use Wsmallnews\Cms\Filament\Resources\NavigationTypes\NavigationTypeResource;
 use Wsmallnews\Cms\Filament\Resources\Posts\PostResource;
 use Wsmallnews\Cms\Models;
@@ -21,12 +22,23 @@ return [
     ],
 
     /**
+     * RSS 订阅
+     *
+     * enabled 控制是否注册 /feed 路由与页头 autodiscovery；limit 为输出条数上限。
+     */
+    'feed' => [
+        'enabled' => true,
+        'limit' => 50,
+    ],
+
+    /**
      * Custom models
      */
     'models' => [
         'navigation' => Models\Navigation::class,
         'navigation_type' => Models\NavigationType::class,
         'post' => Models\Post::class,
+        'link' => Models\Link::class,
     ],
 
     /**
@@ -46,6 +58,7 @@ return [
         ],
         'resources' => [
             NavigationTypeResource::class,
+            LinkResource::class,
             PostResource::class,
         ],
         'pages' => [
@@ -156,6 +169,9 @@ return [
             'navigation-show' => 'navigation/{slug}',
             'posts' => 'posts',
             'posts-show' => 'posts/{slug}',
+
+            // RSS 订阅（注册在根路径，不参与 cms 前缀）
+            'feed' => 'feed',
 
             // 全局搜索结果页（search.display = 'page' 时搜索框回车跳转目标）
             'search' => 'search',
