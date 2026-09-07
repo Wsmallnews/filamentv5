@@ -102,16 +102,13 @@ it('first_leaf_url 叶子节点返回自身 url', function () {
 
 it('navigation 配置默认值正确', function () {
     // 直接读包配置文件断言出厂默认值，与本地 config() 运行时覆盖（如预览皮肤）解耦
-    // style 是高频预览开关（用户会来回切换），不参与文件级断言
+    // style / more_* 是高频预览开关（用户会来回切换），不参与文件级断言
     $defaults = require __DIR__.'/../../../addons/cms/config/sn-cms.php';
 
     expect($defaults['navigation']['desktop_submenu_style'])->toBe('cascade')
         ->and($defaults['navigation']['desktop_submenu_trigger'])->toBe('hover')
         ->and($defaults['navigation']['desktop_item_style'])->toBe('flush')
-        ->and($defaults['navigation']['parent_clickable'])->toBeTrue()
-        ->and($defaults['navigation']['more_submenu_style'])->toBe('accordion')
-        ->and($defaults['navigation']['more_submenu_trigger'])->toBe('click')
-        ->and($defaults['navigation']['more_icon_only'])->toBeTrue();
+        ->and($defaults['navigation']['parent_clickable'])->toBeTrue();
 });
 
 it('parent_clickable 仅 hover 级联生效（无效组合强制无效）', function () {
@@ -211,6 +208,46 @@ it('desktop_item_style=rounded 时一级链接渲染胶囊形态类', function (
         ->assertSee('my-2 rounded-md', false);
 });
 
+it('cascade 模式的更多面板不渲染滚动容器（flyout 可自由弹出）', function () {
+    config(['sn-cms.navigation.more_submenu_style' => 'cascade']);
+    createNav('首页');
+
+    $content = $this->get('/cms')->assertOk()->getContent();
+
+    // overflow 滚动容器会裁切向左/右弹出的 flyout 子菜单，cascade 下禁止
+    expect($content)->toContain('class="sn-cms-nav-more-menu"')
+        ->and($content)->not->toContain('overflow-y-auto sn-scrollbar');
+});
+
+it('accordion 模式的更多面板保留限高滚动', function () {
+    config(['sn-cms.navigation.more_submenu_style' => 'accordion']);
+    createNav('首页');
+
+    $content = $this->get('/cms')->assertOk()->getContent();
+
+    expect($content)->toContain('sn-cms-nav-more-menu max-h-[60vh] overflow-y-auto sn-scrollbar');
+});
+
+it('more_icon_only=false 时更多按钮渲染文字形态与宽内边距', function () {
+    config(['sn-cms.navigation.more_icon_only' => false]);
+    createNav('首页');
+
+    $content = $this->get('/cms')->assertOk()->getContent();
+
+    expect($content)->toContain('<span>更多</span>')
+        ->and($content)->toContain('underline-offset-2 px-4"');
+});
+
+it('more_icon_only=true 时更多按钮保持纯图标与紧凑内边距', function () {
+    config(['sn-cms.navigation.more_icon_only' => true]);
+    createNav('首页');
+
+    $content = $this->get('/cms')->assertOk()->getContent();
+
+    expect($content)->toContain('underline-offset-2 px-1"')
+        ->and($content)->not->toContain('<span>更多</span>');
+});
+
 it('深层导航激活时整条祖先链默认展开', function () {
     // 三层结构，叶子 url 与请求地址一致 → 激活；一二级两个父级都应默认展开（isExpanded: true）
     $level1 = createNav('一级导航');
@@ -220,4 +257,17 @@ it('深层导航激活时整条祖先链默认展开', function () {
     $content = $this->get('/cms')->assertOk()->getContent();
 
     expect(substr_count($content, 'isExpanded: true'))->toBeGreaterThanOrEqual(2);
+});
+
+it('cascade 子菜单项含激活链时渲染 is-active 选中态', function () {
+    // 二级导航下的叶子 url 与请求地址一致 → 二级项在级联 partial（主行 / 更多 cascade）中带 is-active
+    $parent = createNav('新闻中心');
+    $child = createNav('公司新闻', $parent->id);
+    createNav('激活叶子', $child->id, ['options' => ['url' => rtrim((string) config('app.url'), '/').'/cms']]);
+
+    $content = $this->get('/cms')->assertOk()->getContent();
+
+    expect($content)->toContain('sn-cms-sub-item relative has-sub is-active')
+        // 激活叶子自身（无子级）也带选中标记
+        ->and($content)->toContain('sn-cms-sub-item relative is-active');
 });

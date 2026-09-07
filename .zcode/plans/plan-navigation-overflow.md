@@ -1,6 +1,6 @@
 # CMS 导航系统重构执行计划(PC 溢出折叠 + 无限级 + 风格化)
 
-> **状态:✅ 主体完成 + 4 轮迭代反馈全部闭环(2026-09-07)。** 初版 7 阶段执行完毕后,经历 4 轮用户反馈迭代(见文末「迭代记录」),当前 Cms 测试套件 76 项全过。后续用户自定义优化将基于本文档继续。
+> **状态:✅ 主体完成 + 6 轮迭代反馈全部闭环(2026-09-07)。** 初版 7 阶段执行完毕后,经历 6 轮用户反馈迭代(见文末「迭代记录」),当前 Cms 测试套件 81 项全过。后续用户自定义优化将基于本文档继续。
 > 本文档自包含全部背景、已确认决策、实现步骤与迭代决策,供后续会话(无此前对话上下文)直接接手。
 > 交互演示页随本计划一起提交:`public/demo/navigation-overflow-demo.html`(按项目规则永久保留于 `public/demo/`)。
 
@@ -247,6 +247,23 @@ protected function firstLeafUrl(): Attribute
 4. **minimal 黑字**:一级导航/更多按钮/手风琴父行/叶子默认 `text-gray-900 dark:text-gray-100`,hover/选中转主题色。
 5. **defaultOpen 递归 bug**:递归 include 曾强制 `'defaultOpen' => false` 导致深层激活链只展开一层;已改为不传,每层各自按 has_active 展开(测试覆盖:三层激活链 ≥2 处 isExpanded:true)。
 
+## 迭代五:溢出折叠细节 + 布局自适应
+
+1. **「更多」cascade 滚动容器裁切(真 bug)**:更多面板的 `overflow-y-auto`(为 accordion 长列表设计)使 overflow-x 计算值强制变 auto → cascade flyout(弹出在面板外)被整体裁切(实测仅 5px 可见),右弹深层级撑出横向滚动条。修复:cascade 模式下条件移除限高滚动(视图 `@class` 分支,`max-h-[60vh] overflow-y-auto sn-scrollbar` 仅 accordion 保留),flyout 自由弹出,长列表交页面滚动;面板基类 `.sn-cms-nav-more-menu` 相应去掉滚动属性。
+2. **「更多」按钮文字形态内边距**:纯图标保持 `px-1`,带文字改 `px-4`(与一级导航对齐)。
+3. **统一子菜单弹出动画**:`.sn-cms-sub` 从 `display:none/block` 切换改为 `opacity-0 invisible scale-[0.98] pointer-events-none` + `transition-[opacity,visibility,transform] duration-150 ease-out motion-reduce:transition-none`,与「更多」面板 x-transition(150ms opacity+scale)节奏一致;覆盖主行级联、更多面板级联、桌面手风琴外层面板。
+4. **侧栏自适应分栏(初版 md)**:`navigation-container` 的 `md:w-72` 写死改为 `md:grid-cols-4 / xl:grid-cols-5` 比例分栏(迭代六统一改 lg)。
+5. 新增 4 项测试(更多面板 cascade/accordion 类分支、按钮图标/文字形态)。
+
+## 迭代六:四级截断攻坚 + 暗黑体系 + 断点统一
+
+1. **flyout 方向检测基准错误(真 bug,主行与更多共用)**:原判断 `rect.right > window.innerWidth - 8` 双重错误——① innerWidth 含滚动条(实测差 15px);② 真正的裁切线是**导航条自身右边界**(`overflow-x-clip` 所在,条在居中容器内,1447px 视口下比视口窄 115px)。四级面板实测在条右缘 1332 处被静默裁掉 99px 而 JS 判定放得下。修复:新增 `flipBounds()`(右侧取条右缘与 `documentElement.clientWidth` 的较小值)+ `positionCascade()`(默认右弹,右缘放不下翻转左弹,向左也穿出条左缘翻回右弹,margin 8px)+ `repositionOpenCascades()`(bar ResizeObserver 里除 applyOverflow 外对展开中菜单重新定向)。验证:四级链 pop-left 913-1089 完整落在条边界内;1447→1024 resize 后三层面板全部自动重定向。
+2. **侧栏断点统一 md→lg(7 处)**:lg(1024)起并排(lg 1:3 / xl 1:4),以下上下堆叠侧栏在上;条件侧栏时内容列 `@class` 兜底占满整行防空轨道。文件:navigation-container、profile、profile/views、settings/profile|password|two-factor、post/posts(分类树)。**该布局已沉淀为全站规则**:`.ai/rules/views.md` + support 包 `resources/boost/guidelines/core.blade.php`(侧栏+内容比例分栏节,含右侧栏写法=内容 div 在前)。
+3. **primary 暗黑适配(用户定义)**:所有 primary 表面 = 亮 `primary-500` / 暗 `primary-600`(与调用方 `sn-primary-bg` 一致),覆盖 `.sn-cms-sub`、`.sn-cms-nav-more-menu`、`.sn-cms-brothers`、`.sn-cms-nav-mobile`、`.sn-cms-nav-search-strip`;选中色 = 亮 600 / 暗 700(始终比所在表面深一档),覆盖 nav-link/more-btn/acc-row/acc-leaf 选中态。hover 保持 400(提亮,两种底均可辨)。修复了暗黑下选中 600 == 条背景 600 完全同色的问题。
+4. **cascade 子菜单项选中态**:cascade-item partial 原先完全不输出 `is-active`(accordion 有、cascade 没有)→ li 按 `has_active` 输出;CSS 双皮肤:primary `bg-primary-600 dark:bg-primary-700`,minimal `bg-primary-100 text-primary-700 dark:…`。「更多」cascade 内折叠的激活项现在与更多按钮同步高亮。
+5. **测试种子** `seed-nav-test.php`(主应用根目录,幂等):20 顶级项(12+8),含三个多级父项(产品中心 4 级链带激活点 /cms 与 /cms/posts、解决方案 4 级、服务支持 3 级)+ 超长名称项;1280px 下折叠 9 项。
+6. **测试适配**:`more_submenu_style` / `more_submenu_trigger` / `more_icon_only` 与 `style` 同列为高频预览键——默认值文件断言跳过,渲染测试显式 `config()` 锁定,不受用户本地预览值影响。
+
 ## 当前文件地图
 
 | 文件 | 职责 |
@@ -257,16 +274,22 @@ protected function firstLeafUrl(): Attribute
 | `addons/cms/src/Livewire/Components/Navigation/Brothers.php` | 同级导航(markDescendantDepth 递归标注) |
 | `addons/cms/config/sn-cms.php` | `navigation` 节 8 个配置项(含 desktop_item_style) |
 | `.../livewire/tradition/components/navigation/navigation.blade.php` | 主视图 + snCmsNav Alpine 组件(溢出测量/级联管理) |
-| `.../navigation/partials/cascade-item.blade.php` | 递归级联行 |
+| `.../navigation/partials/cascade-item.blade.php` | 递归级联行(is-active 选中态) |
 | `.../navigation/partials/accordion-item.blade.php` | 递归手风琴行(variant: panel/menu + depthOffset) |
 | `.../navigation/brothers.blade.php` | 同级导航卡片 |
-| `addons/cms/resources/css/index.css` | sn-cms-* 皮肤/状态/定位类(布局已回视图) |
+| `.../navigation/navigation-container.blade.php` | 侧栏 + 内容比例分栏(lg 1:3 / xl 1:4) |
+| `.../tradition/profile.blade.php`、`profile/views.blade.php`、`settings/{profile,password,two-factor}.blade.php`、`.../components/post/posts.blade.php` | 同款比例分栏布局(7 处统一) |
+| `addons/cms/resources/css/index.css` | sn-cms-* 皮肤/状态/定位类(布局已回视图;暗黑 500/600 + 选中 600/700) |
 | `addons/support/resources/css/index.css` | `[x-cloak]` 兜底 + sn-rounded 分角变体 |
-| `tests/Feature/Cms/NavigationTest.php` | 13 项导航测试(配置/accessor/渲染/激活链) |
+| `addons/support/resources/boost/guidelines/core.blade.php` | 全站「侧栏+内容比例分栏」布局规则(供所有扩展包遵循) |
+| `.ai/rules/views.md` | 同上规则的项目级 views 规则落地 |
+| `seed-nav-test.php`(主应用根目录) | 「更多」按钮测试数据种子(幂等) |
+| `tests/Feature/Cms/NavigationTest.php` | 18 项导航测试(配置/accessor/渲染/激活链/面板分支/按钮形态) |
 
 ## 接手注意事项
 
-- `config/sn-cms.php` 的 `style` 是高频预览开关,用户会来回切换;默认值测试已跳过该键,其余键照常文件级断言。当前用户预览值可能为 `minimal`。
-- 开发库测试数据:旧遗留一级导航(星品新闻×2、aaa 等,注意有**同名项**,浏览器探针易误匹配)+ 验收种子(`seed-nav-*` 前缀,含四级层级;`媒体报道页` url 指向 /cms 用于激活态)。清理后台可删。
+- `config/sn-cms.php` 的 `style` 及 `more_submenu_style` / `more_submenu_trigger` / `more_icon_only` 是高频预览开关,用户会来回切换;默认值测试已跳过这些键,其余键照常文件级断言。**当前用户预览值可能为 more 区 cascade + hover + 文字按钮**(包 config)。
+- 测试种子 `seed-nav-test.php` 在主应用根目录(幂等可重复执行);20 个顶级项里「产品中心」链含指向 /cms 与 /cms/posts 的激活点,访问这两个页面时「更多」按钮与其内折叠项会常亮——属设计行为,勿误判为 bug。开发库另有「哦买嘎」url 被后台改为 /cms/posts,与「产品介绍」同 URL 会双激活。清理后台可按名称识别这批新顶级项。
 - 用户并行开发中(勿动):`footer-rss`、`LinkStatus`、`create_sn_links_table` stub、product 的 `base.card` 组件(引用存在、定义未找到)。
-- 测试环境 PHP:`cmd //c "C:\Users\XPKJ-003\.config\herd\bin\php.bat"`(bash 无 php);验证浏览器为 IAB 面板,遮挡时 rAF/CSS 过渡会冻结,JS 交互测试需先注入 `requestAnimationFrame` shim。
+- 测试环境 PHP:`cmd //c "C:\Users\XPKJ-003\.config\herd\bin\php.bat"`(bash 无 php);smallnews 机器为 `C:\Users\smallnews\.config\herd\bin\php.bat`。验证浏览器为 IAB 面板,**遮挡时 rAF/CSS 过渡会冻结**(getComputedStyle 停在过渡起始值、截图失败),JS 交互测试需先注入 requestAnimationFrame shim,视觉验证需禁用过渡(`*{transition:none!important}`)后截图;`document.visibilityState` 为 hidden 即处于此状态。
+- 侧栏 + 内容比例分栏为全站统一布局模式,规则见 `.ai/rules/views.md` 与 support 包 `resources/boost/guidelines/core.blade.php`,新页面遵循同一模板。
