@@ -22,9 +22,12 @@ return [
     ],
 
     /**
-     * RSS 订阅
+     * RSS 订阅（cms 的 posts 内容流）
      *
-     * enabled 控制是否注册 /feed 路由与页头 autodiscovery；limit 为输出条数上限。
+     * 端点由 support 提供（/feed 整站聚合流、/feed/posts 具名流、/cms/feed 与
+     * /cms/feed/posts 模块端点——仅输出本模块流），cms 只往 FeedRegistry 注册
+     * 内容流并在路由组内调 Feed::routes()：enabled 控制是否注册流与模块端点路由
+     * （boot 期读取，关闭后前台渲染层一并隐藏）；limit 为本流输出条数上限。
      */
     'feed' => [
         'enabled' => true,
@@ -169,9 +172,6 @@ return [
             'navigation-show' => 'navigation/{slug}',
             'posts' => 'posts',
             'posts-show' => 'posts/{slug}',
-
-            // RSS 订阅（注册在根路径，不参与 cms 前缀）
-            'feed' => 'feed',
 
             // 全局搜索结果页（search.display = 'page' 时搜索框回车跳转目标）
             'search' => 'search',
