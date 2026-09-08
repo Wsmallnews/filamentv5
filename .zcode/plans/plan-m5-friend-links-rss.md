@@ -1,8 +1,11 @@
 # CMS M5（友情链接 + RSS）执行记录与剩余任务计划
 
 > 本文档自包含全部背景与细节，供后续会话（无此前对话上下文）直接继续执行。
-> 状态：**M5 代码已完成、测试全绿，但用户尚未审阅**——用户将换电脑在 git 仓库中审阅并提交。
-> 里程碑全景：M1 站点配置 / M2 SEO meta / M3 sitemap+robots / M4 Footer 重构（均已完成并经用户多轮审阅）；M5 为本文档主体，待审。
+> 状态：**M5 已完成并经用户审阅提交**（2026-09-08 确认）。里程碑全景：M1 站点配置 / M2 SEO meta / M3 sitemap+robots / M4 Footer 重构 / M5 友情链接 + RSS，均已完成。
+>
+> **提交记录**：cms 侧 `c5c4d88`（友情链接、rss 初次完成）→ `8e4f181`（feed 重构为注册制）→ `7e057e2`（友情链接资源优化）；support 侧 `f821993`（feed 注册制重构）→ `8d6991f`（feed 代码风格优化：Utils 配置分组方法 + isDomainFilterEnabled 重命名，见下文「2026-09-08 后续重构」）。
+>
+> **2026-09-08 后续重构（已随 8d6991f 提交）**：support 包配置读取从 `SupportUtils::getConfig('feeds.xxx')` 点号参数名改为分组方法——Utils 新增 `getSitemapConfig` / `getFeedsConfig` / `getThemeConfig`（与既有 `getSearchConfig` / `getSchedulerConfig` 同构），FeedRegistry / SitemapRegistry / routes/web.php / Theme.php 全部调用点已迁移；`MatchesDomain` 的抽象方法 `domainFilterKey()`（返回配置键名）改为 `isDomainFilterEnabled(): bool`（直接返回开关值，实现里 `getFeedsConfig('domain_filter', true) === true` 保持原严格语义）；Feed Facade 补 `feedUrl` / `autodiscoveryTags` 注释。
 
 ## 1. M5 交付清单（今晚审阅用，文件级明细）
 
@@ -55,7 +58,7 @@
 | `addons/support/src/Features/Feed/FeedRegistry.php` | feed 注册表（单例 + `Feed` facade；配置读取统一走 `SupportUtils::getConfig` 点号参数名）：`config(模块, [domain/title/description/link])` 模块域名与频道元数据声明 / `register(模块, name, feed)` 具名流（title/label/description/link/limit/items 闭包，**name 全局唯一、重名抛异常**）/ `available()` 整站视角可见流 / `moduleFeeds(模块)` 模块视角可见流 / `getFeed(name, ?模块)` 含归属校验 / `routes(模块)` 注册模块端点路由并捕获完整路由名（`{前缀}feed.show`）/ `feedUrl(name)` 订阅地址（模块端点优先，`sn_route` 租户感知）/ `autodiscoveryTags(模块)` head 内 autodiscovery 标签（`@snFeeds` 指令的支撑方法）/ `render(?name)` 整站渲染 / `renderModule(模块, ?name)` 模块端点渲染（四种端点形态共用 compile，按流整份缓存，key 带租户+域名+模块+流标识）/ `flush()` 清全部端点缓存 |
 | `addons/support/src/Facades/Feed.php` | facade（accessor = FeedRegistry::class） |
 | `addons/support/src/Http/Controllers/FeedController.php` | `index()` 整站聚合 + `show(name)` 具名流（不可见 404）+ `moduleIndex()` / `moduleShow(name)` 模块端点（**feed_module 显式从路由参数取，不走方法注入**——Laravel 传路由参数按位置 array_values，defaults 键与 URI 段顺序无法对齐，踩过参数错位坑） |
-| `addons/support/src/Features/Concerns/MatchesDomain.php` | 从 SitemapRegistry 抽出的域名过滤 trait（moduleMatchesDomain + hostMatches，含 `{tenant:slug}.example.com` 通配），两个 registry 共用；各自经 `domainFilterKey()` 声明配置键 |
+| `addons/support/src/Features/Concerns/MatchesDomain.php` | 从 SitemapRegistry 抽出的域名过滤 trait（moduleMatchesDomain + hostMatches，含 `{tenant:slug}.example.com` 通配），两个 registry 共用；各自经 `isDomainFilterEnabled()` 返回过滤开关（原 `domainFilterKey()` 已重命名，见文档头部「后续重构」） |
 
 **support 侧修改文件：**
 
@@ -98,36 +101,25 @@
 
 其余 M5 文件（模型/迁移/资源/控制器/视图/测试）与对方零交集。全量回归 74 绿证明两任务测试同时通过。
 
-## 4. 剩余任务（按优先级）
+## 4. 剩余任务（2026-09-08 更新：任务 A / B 已完成，仅剩任务 C backlog）
 
-### 任务 A：PostForm slug 生成优化（来自 M3 期间发现的存量问题）
+### 任务 A：PostForm slug 生成优化 ✅ 已完成（2026-09-08）
 
-**问题**：`addons/cms/src/Filament/Resources/Posts/Schemas/PostForm.php` 的 slug 自动生成用 `Str::slug(title)`：
-- 超长标题（如重复粘贴产生 170 字符标题）生成超长 slug；
-- 纯中文标题 `Str::slug` 转换结果为**空**，slug 字段校验 required 会卡住（开发库现存 `3%E9%98%BF...` 这类中文直存 slug 即历史脏数据）。
+**改动**：slug 生成逻辑已抽取为 **support 包全局助手 `generate_slug(?string $value, int $limit = 80, ?string $fallbackPrefix = null): string`**（`addons/support/src/Helpers/helper.php`，composer files 自动加载）：`Str::slug` 按应用语言转写 → 超 `$limit` 时**按词边界（连字符）截断**（窗口内取最后一个连字符之前，避免单词截半或尾部连字符；窗口内无连字符才硬切）→ 空结果兜底 `$fallbackPrefix-随机串`（默认前缀 `slug`）。`PostForm` 的 `afterStateUpdated` 一行调用 `generate_slug($state, fallbackPrefix: 'post')`。**未加** slug 字段 `maxLength(80)`（存量长 slug 的记录在编辑无关字段时会卡验证，得不偿失）。
 
-**方案**（改 `afterStateUpdated`）：
-```php
-->afterStateUpdated(function (Set $set, $state) {
-    $slug = Str::limit(Str::slug(title: $state, language: app()->getLocale()), 80, '');
-    $set('slug', filled($slug) ? $slug : 'post-' . Str::lower(Str::random(8)));   // 空结果兜底
-}),
-```
-- 截断 80 字符、无省略号后缀；
-- 空结果（纯中文等）兜底 `post-随机串`；运营者仍可手动改（字段可编辑）；
-- **不做存量数据自动迁移**（脏 slug 由运营后台手改）；可选：给 slug 字段加 `maxLength(80)` 前端约束。
+**测试**：`tests/Feature/Cms/SlugTest.php`（5 用例，PostForm 集成路径）+ `tests/Feature/Support/GenerateSlugTest.php`（6 用例，助手直测）全绿。
 
-**测试**（新建 `tests/Feature/Cms/SlugTest.php` 或并入 PostContentTest）：
-- 长重复标题 → slug ≤80 且非空；
-- 纯中文标题 → slug 以 `post-` 开头非空。
+**重要环境发现**：装有 intl 的机器上 `Str::slug` 会把中文**转写成拼音**（如「这是一篇…」→ `zhe-shi-yi-pian...`），「纯中文 → 空 slug」只在无 intl 环境触发——写计划那台机器上看到的空 slug 属环境差异，不是必然行为。因此测试断言写法：中文标题断言「slug 非空」（拼音或兜底均满足），另用任何环境都无法转写的纯符号标题（`!!!###`）确定性地覆盖兜底路径。
 
-**文件冲突检查**：PostForm.php 不在导航任务范围，无冲突。
+### 任务 B：收尾杂项 ✅ 已完成（2026-09-08）
 
-### 任务 B：收尾杂项
+1. ✅ `public/footer-preview.html` 已删除（`public/demo/` 保留未动）。
+2. ✅ SwiperComponentTest 2 个存量失败已修复——**根因不是环境差异，是过期测试**：组件在 8/30 重构（support `651d6f2`「更新优化 swiper 组件」）中移除了内建 label 说明条（重构后设计 = 覆盖内容统一走组合模式 slot，见组件注释），并把跳转键名 `url` 改为 `href`；测试仍停留在旧契约。已把 2 个过期用例更新到当前契约（`href` 跳转 + 组合模式 slot 渲染覆盖内容），9/9 全绿。
+3. （提醒项保留）移动/重命名包内 PHP 文件后记得 `composer dump-autoload`。
 
-1. 删除 `public/footer-preview.html`（M4 静态预览页，M4 已验收，对照价值已完成；注意 `public/demo/` 目录按项目规则**永久保留**，此文件不在 demo 目录，可删）。
-2. 排查 `tests/Feature/Support/SwiperComponentTest.php` 的 2 个存量失败（精确 HTML 断言疑似环境差异；已验证与 M2-M5 改动无关——stash 掉改动后仍失败）。
-3. 若移动/重命名包内 PHP 文件，记得 `composer dump-autoload`（classmap 优化模式会找不到新命名空间的类，M4 期间踩过）。
+**回归中额外发现并修复的真 bug（M5 漏项）**：`Link` 模型 use 了 `HasActivityLog`，但 `CmsServiceProvider::packageBooted()` 的 `Relation::enforceMorphMap` 漏注册 Link 别名——创建友链时活动日志写 `subject_type` 抛 `ClassMorphViolationException`，本机 LinkResourceTest 4/5 挂（写计划机器回归全绿是因为 `7e057e2 友情链接资源优化` 加 HasActivityLog 晚于当时那次全量回归）。已补 `'sn_link' => Utils::getLinkModel()`。**存量数据注意**：修复前若有活动日志行以完整类名 `Wsmallnews\Cms\Models\Link` 存了 subject_type，需要手改或忽略。
+
+**最终回归（本机首次全绿）**：cms + support **165 过 / 0 挂 / 3 skip**。
 
 ### 任务 C：远期 backlog（来自全面差距分析，未排期，供规划参考）
 

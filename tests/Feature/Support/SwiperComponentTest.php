@@ -17,20 +17,16 @@ it('swiper 组件渲染字符串幻灯片和默认缩略图', function () {
         ->toContain("thumbDirection: 'horizontal'");
 });
 
-it('swiper 组件渲染数组幻灯片，支持 url 跳转与默认说明条', function () {
+it('swiper 组件渲染数组幻灯片，支持跳转链接', function () {
     $html = (string) $this->blade('<x-sn-support::swiper :slides="$slides" :has-thumb="false" />', [
         'slides' => [
-            ['image' => 'a.jpg', 'url' => 'https://example.com/a', 'label' => '第一张'],
+            ['image' => 'a.jpg', 'href' => 'https://example.com/a'],
         ],
     ]);
 
     expect($html)
         ->toContain("jumpToUrl('https://example.com/a'")
-        ->toContain('第一张')
-        ->toContain('swiper-slide-label')
-        ->toContain('bg-black/50')
-        ->toContain('object-contain')
-        ->not->toContain('x-ref:thumbs');
+        ->toContain('cursor-pointer');
 });
 
 it('swiper 组件单张幻灯片时自动隐藏缩略图', function () {
@@ -43,22 +39,20 @@ it('swiper 组件单张幻灯片时自动隐藏缩略图', function () {
         ->not->toContain('x-ref="thumbs"');
 });
 
-it('swiper 组件支持自定义说明条样式', function () {
-    $html = (string) $this->blade('<x-sn-support::swiper :slides="$slides" :has-thumb="false" label-class="top-0 bg-red-500" />', [
-        'slides' => [['image' => 'a.jpg', 'label' => '标题']],
-    ]);
-
-    expect($html)
-        ->toContain('top-0 bg-red-500')
-        ->not->toContain('bg-black/50');
-
-    $html = (string) $this->blade('<x-sn-support::swiper :slides="$slides" :has-thumb="false" label-class="top-0" />', [
-        'slides' => [['image' => 'a.jpg', 'label' => '标题', 'label_class' => 'bottom-2 bg-blue-500']],
-    ]);
+it('swiper 组件组合模式下覆盖内容由调用处渲染', function () {
+    // 旧版内建的 label 说明条已在组件重构中移除，覆盖内容统一走组合模式 slot（定位与样式由调用处控制）
+    $html = (string) $this->blade(<<<'BLADE'
+        <x-sn-support::swiper :has-thumb="false">
+            <x-sn-support::swiper.slide image="a.jpg">
+                <div class="absolute bottom-2 bg-blue-500">标题</div>
+            </x-sn-support::swiper.slide>
+        </x-sn-support::swiper>
+        BLADE);
 
     expect($html)
         ->toContain('bottom-2 bg-blue-500')
-        ->not->toContain('top-0');
+        ->toContain('标题')
+        ->toContain('data-slide-image="a.jpg"');
 });
 
 it('swiper 组件支持 html 幻灯片自定义内容', function () {
