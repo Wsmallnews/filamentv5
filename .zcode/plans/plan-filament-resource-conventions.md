@@ -208,16 +208,16 @@ Resources/Xxxs/
 ### 5.1 新增模型 trait `HasOrderColumn`
 
 - 位置：`addons/support/src/Models/Concerns/HasOrderColumn.php`。
-- `creating` 钩子：order_column 为空时，在**模型 scope 内**取 `max(order_column) + 1` 填充。
-- scope 来源：新增方法 `getOrderColumnScope(): array`，默认 `[]`；需要按租户/scope 隔离序号的模型覆盖它（如返回 `['team_id' => $this->team_id]`）。执行时倾向简单实现：默认空 scope，各模型按需覆盖。
-- 测试：创建留空自动填充 max+1；显式传值不覆盖；scope 隔离正确。
+- `creating` 钩子：order_column 为空时取 `max(order_column) + 1` 填充。
+- 查询定制（2026-09-09 按用户确认由数组改为 query 方式）：模型可覆盖 `modifyOrderColumnQuery(Builder $query): Builder` 自由拼接条件（如 `return $query->where('team_id', $this->team_id)`），默认实现返回原 query（全表计数；序号全局单调，组内排序依然正确，因此各包模型默认**不覆盖**）。
+- 测试：创建留空自动填充 max+1；显式传值不覆盖；覆盖 modifyOrderColumnQuery 后隔离正确。
 
 ### 5.2 工厂方法扩展
 
 | 工厂 | 位置 | 内容 |
 |---|---|---|
-| `FormComponents::statusToggleButtons(string $enumClass, string $field = 'status')` | FormComponents | ToggleButtons + inline + grouped + options($enum) + default(枚举第一 case) |
-| `FormComponents::orderColumnInput(string $field = 'order_column')` | FormComponents | TextInput + integer + min:0 + helperText（翻译 key） |
+| `FormComponents::statusToggleButtons(string $enumClass, string $field = 'status', ?string $label = null)` | FormComponents | ToggleButtons + inline + grouped + options($enum) + default(枚举第一 case)；label 缺省取翻译 `form_components.status.label` |
+| `FormComponents::orderColumnInput(string $field = 'order_column', ?string $label = null)` | FormComponents | TextInput + integer + min:0 + label 缺省取翻译 + helperText（翻译 key） |
 | `FilterComponents::statusFilter(string $enumClass, string $field = 'status', ?string $label = null)` | FilterComponents | SelectFilter + options($enum)，label 缺省取翻译 |
 
 每个工厂写测试（断言组件类型、默认配置）。
@@ -298,12 +298,15 @@ Resources/Xxxs/
 
 **P0（最高权重，最先做）**
 
-- [ ] **S0 规范落地 support**（~2.5h）：§4（含 §4.6 资源创建规范）写入 `addons/support/resources/boost/guidelines/core.blade.php`（「组件工厂」小节后，新增 `### Filament Resource 风格统一` 小节）；同步主应用 AGENTS.md support 区段（`php artisan list` 查 `boost:*` 同步命令，无则手动贴）。support 子模块 commit + 主仓库 commit（含本计划）。
+- [x] **S0 规范落地 support**（~2.5h）：§4（含 §4.6 资源创建规范）写入 `addons/support/resources/boost/guidelines/core.blade.php`（「组件工厂」小节后，新增 `### Filament Resource 风格统一` 小节）；同步主应用 AGENTS.md support 区段（`php artisan list` 查 `boost:*` 同步命令，无则手动贴）。support 子模块 commit + 主仓库 commit（含本计划）。
+  > ✅ 2026-09-09 代码已完成，**改动未提交，等用户审阅后自行提交**（提交约定变更：各步骤由用户提交，AI 不再代为 commit/push）。同步机制：`boost.json` agents 仅配 `claude_code`，`php artisan boost:update` 只重生成 CLAUDE.md，AGENTS.md 需用新生成的 CLAUDE.md 整体替换其 boost 区块（`<laravel-boost-guidelines>` 标签内），手写尾部保留。**顺带修复存量 bug**：core.blade.php「侧栏 grid」代码块未用 `@verbatim` 包裹，`@class([...$hasSidebar...])` 编译时变量未定义 → 整个文件渲染失败 → boost 静默丢弃 Support 区段（preference 同查无此问题）。
 
 **P0（基础设施，S1、S2 可分两天）**
 
-- [ ] **S1 HasOrderColumn trait**（~2h）：`addons/support/src/Models/Concerns/HasOrderColumn.php` + 功能测试（留空自动填充 max+1 / 显式值不覆盖 / scope 隔离）；`vendor/bin/pint --dirty`；跑新测试；commit。
-- [ ] **S2 表单/筛选工厂**（~3h）：`statusToggleButtons` / `orderColumnInput` / `statusFilter` 三方法 + zh_cn/en 翻译 + 测试；pint；commit。
+- [x] **S1 HasOrderColumn trait**（~2h）：`addons/support/src/Models/Concerns/HasOrderColumn.php` + 功能测试（留空自动填充 max+1 / 显式值不覆盖 / scope 隔离）；`vendor/bin/pint --dirty`；跑新测试；commit。
+  > ✅ 2026-09-09 代码已完成，**改动未提交，等用户审阅后自行提交**；测试 `tests/Feature/Support/HasOrderColumnTest.php`（4 passed / 9 assertions，临时建表 + 匿名模型）。
+- [x] **S2 表单/筛选工厂**（~3h）：`statusToggleButtons` / `orderColumnInput` / `statusFilter` 三方法 + zh_cn/en 翻译 + 测试；pint；commit。
+  > ✅ 2026-09-09 代码已完成，**改动未提交，等用户审阅后自行提交**；测试 `tests/Feature/Support/FilamentComponentFactoriesTest.php`（6 passed / 19 assertions）；Support 目录回归 86 passed。注意：support 包中文翻译实际目录为 `resources/lang/zh_CN/`（大写 N），计划中写的 `zh_cn` 在 Windows 大小写不敏感文件系统上会静默落到同一文件，其他包操作翻译时留意。
 
 **P1（核心业务包，cms 三步、category 两步）**
 
