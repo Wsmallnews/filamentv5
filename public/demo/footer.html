@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Footer 样式示例 - 小新闻资讯</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Instrument Sans', 'ui-sans-serif', 'system-ui', 'sans-serif', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body { font-feature-settings: 'cv11', 'ss01'; }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-700 dark:text-gray-200 antialiased">
+
+    <!-- 占位内容区：仅用于示意 footer 在页面中的位置 -->
+    <main class="grow flex items-center justify-center py-16">
+        <p class="text-sm text-gray-400 dark:text-gray-500 select-none">（页面内容区域 — 仅示意，本文件只演示 footer）</p>
+    </main>
+
+    <!-- ============ Footer 重设计示例 ============ -->
+    <footer class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+            <!-- 上部：品牌区 + 导航/订阅区（12 栅格：4 + 8） -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-x-12 gap-y-10 py-10">
+
+                <!-- 品牌区（4/12）：logo + 口号 + 联系方式（两列紧凑） + 二维码 -->
+                <div class="lg:col-span-4 flex flex-col">
+                    <a href="javascript:;" class="inline-flex items-center gap-3 shrink-0" aria-label="小新闻资讯">
+                        <img src="../storage/sn/cms/settings/20260909/01M237TPBTGMAGFEPPFSHQQR8B.png"
+                             alt="小新闻资讯" class="h-14 w-auto object-contain">
+                    </a>
+                    <p class="mt-2.5 text-sm text-gray-500 dark:text-gray-400">新鲜资讯，每日送达</p>
+
+                    <address class="not-italic mt-5 grid grid-cols-1 gap-y-2 text-sm">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-gray-400 dark:text-gray-500 shrink-0 w-14">电话</span>
+                            <a href="tel:15737921560" class="text-gray-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors break-all">15737921560</a>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-gray-400 dark:text-gray-500 shrink-0 w-14">邮箱</span>
+                            <a href="mailto:platform@platform.com" class="text-gray-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors break-all">platform@platform.com</a>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-gray-400 dark:text-gray-500 shrink-0 w-14">地址</span>
+                            <span class="text-gray-600 dark:text-gray-300">易元国际易元国际易元国际</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-gray-400 dark:text-gray-500 shrink-0 w-14">工作时间</span>
+                            <span class="text-gray-600 dark:text-gray-300">周一至周五 9:00-18:00</span>
+                        </div>
+                    </address>
+
+                    <!-- 二维码：贴底排列，小尺寸不抢视线 -->
+                    <div class="mt-auto pt-6 flex gap-4">
+                        <figure class="flex flex-col items-center gap-1.5 group">
+                            <img src="../storage/sn/cms/settings/20260909/01M237WC3QPHF72R5MCTPM8KXR.webp"
+                                 alt="官方公众号二维码" loading="lazy"
+                                 class="w-[72px] h-[72px] rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-1 bg-white transition-transform duration-300 group-hover:scale-105">
+                            <figcaption class="text-xs text-gray-400 dark:text-gray-500">公众号</figcaption>
+                        </figure>
+                        <figure class="flex flex-col items-center gap-1.5 group">
+                            <img src="../storage/sn/cms/settings/20260909/01M237WC3K781ZN58CHT1QP8S5.webp"
+                                 alt="个人微信二维码" loading="lazy"
+                                 class="w-[72px] h-[72px] rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-1 bg-white transition-transform duration-300 group-hover:scale-105">
+                            <figcaption class="text-xs text-gray-400 dark:text-gray-500">个人微信</figcaption>
+                        </figure>
+                    </div>
+                </div>
+
+                <!-- 导航/订阅区（8/12）：分组列 + 快捷入口 + RSS -->
+                <nav class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-8 self-start" aria-label="页脚导航">
+                    <!-- 分组一：文章中心（有子级的一级导航） -->
+                    <div class="flex flex-col gap-3">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            文章中心
+                            <span class="w-6 h-[3px] rounded-full bg-amber-500" aria-hidden="true"></span>
+                        </h3>
+                        <ul class="flex flex-col gap-2 text-sm" role="list">
+                            <li><a href="javascript:;" class="text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">行业新闻</a></li>
+                            <li><a href="javascript:;" class="text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">大杂烩</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 分组二：人员中心 -->
+                    <div class="flex flex-col gap-3">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            人员中心
+                            <span class="w-6 h-[3px] rounded-full bg-amber-500" aria-hidden="true"></span>
+                        </h3>
+                        <ul class="flex flex-col gap-2 text-sm" role="list">
+                            <li><a href="javascript:;" class="text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">小心</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- 分组三：快捷入口（无子级的一级导航 + RSS 订阅） -->
+                    <div class="flex flex-col gap-3 col-span-2 sm:col-span-1">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            快捷入口
+                            <span class="w-6 h-[3px] rounded-full bg-amber-500" aria-hidden="true"></span>
+                        </h3>
+                        <ul class="flex flex-col gap-2 text-sm" role="list">
+                            <li><a href="javascript:;" class="text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">哈哈哈</a></li>
+                            <li><a href="javascript:;" class="text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">呵呵呵</a></li>
+                            <li><a href="javascript:;" class="text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">嘻嘻嘻</a></li>
+                            <li>
+                                <a href="javascript:;" class="inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                                    <svg class="w-3.5 h-3.5 text-orange-500 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.18 20.82a2.18 2.18 0 1 1 0-4.36 2.18 2.18 0 0 1 0 4.36zM4 4.44v3.2c6.83 0 12.36 5.53 12.36 12.36h3.2C19.56 11.4 12.6 4.44 4 4.44zm0 5.66v3.2c3.87 0 7 3.13 7 7h3.2c0-5.63-4.57-10.2-10.2-10.2z"/></svg>
+                                    文章动态
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- 友链条：标签 + 紧凑换行平铺（13px，小间隔，无分隔竖线） -->
+            <nav class="border-t border-gray-100 dark:border-gray-800 pt-5 pb-4 flex flex-wrap items-center gap-x-5 gap-y-2" aria-label="友情链接">
+                <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 tracking-wide">友情链接</span>
+                <a href="https://learnku.cn" target="_blank" rel="noopener" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">Laravel China</a>
+                <a href="https://juejin.cn" target="_blank" rel="noopener" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">掘金</a>
+                <a href="https://v2ex.com" target="_blank" rel="noopener" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">V2EX</a>
+                <a href="https://segmentfault.com" target="_blank" rel="noopener" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">SegmentFault 思否</a>
+                <a href="https://github.com" target="_blank" rel="noopener" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">GitHub</a>
+                <a href="https://stackoverflow.com" target="_blank" rel="noopener" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">Stack Overflow</a>
+                <a href="https://packagist.org" target="_blank" rel="noopener" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">Packagist</a>
+                <a href="https://cloud.tencent.com" target="_blank" rel="noopener nofollow" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">腾讯云</a>
+                <a href="https://aliyun.com" target="_blank" rel="noopener nofollow" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">阿里云</a>
+                <a href="https://www.baidu.com" target="_blank" rel="noopener nofollow" class="text-[13px] text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 hover:underline underline-offset-4 transition-colors">百度</a>
+            </nav>
+        </div>
+
+        <!-- 底部合规条：版权 + 备案居中一行，一体式窄条（浅灰底） -->
+        <div class="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs text-gray-400 dark:text-gray-500 text-center">
+                <span>© 2021-2025 资源库版权所有</span>
+                <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" class="hover:text-amber-600 dark:hover:text-amber-400 transition-colors">豫-2312233331122</a>
+                <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=44030000000000" target="_blank" rel="noopener" class="inline-flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                    <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor" opacity="0.25"/><path d="M12 4l6 2.4v5c0 4-2.6 7.2-6 8.6-3.4-1.4-6-4.6-6-8.6v-5L12 4z" fill="currentColor" opacity="0.6"/><path d="M9 12.2l2 2 4-4.2" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+                    粤公网安备 44030000000000号
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 暗色模式切换（仅 demo 演示用） -->
+    <button onclick="document.documentElement.classList.toggle('dark')"
+            class="fixed bottom-4 right-4 z-50 px-3 py-2 rounded-lg text-xs font-medium bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-lg hover:scale-105 transition-transform">
+        切换深色 / 浅色
+    </button>
+
+</body>
+</html>
