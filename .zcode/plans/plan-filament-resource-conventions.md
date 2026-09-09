@@ -1,9 +1,9 @@
 # addons Filament Resource 风格统一改造计划
 
 > 本文档自包含全部背景、决策与规范，供后续会话（无此前对话上下文、可能更换电脑）直接继续执行。
-> 状态：**计划已制定，尚未开始执行**（2026-09-08 制定；已按用户第二轮反馈修订，未动任何代码）。
+> 状态：**P0（S0~S2）、P1（S3~S6b）、P2（S7~S9）已全部完成**（2026-09-09，改动未提交、待用户审阅 commit，commit 记录见 §10）；**S10 自动化全量测试已跑，逐面板人工核对待用户执行**；主仓库尚有一批配套文件待提交（见 §10 换机前必做）。
 > 范围：**只处理 `addons/` 目录下的扩展包**（cms、category、comment、member、product、support、user），不涉及主应用与 vendor。
-> 执行模式：**按 §7 步骤顺序、每天一个或多个步骤**，每步控制在半天内、独立可提交；换电脑后从第一个未勾选步骤继续。
+> 执行模式：**按 §7 步骤顺序、每天一个或多个步骤**，每步控制在半天内、独立可提交；换电脑后从第一个未勾选步骤继续。**提交约定：默认由用户自行 commit/push，AI 只改代码跑测试并汇报**（用户明确要求时代劳）。
 
 ---
 
@@ -299,31 +299,35 @@ Resources/Xxxs/
 **P0（最高权重，最先做）**
 
 - [x] **S0 规范落地 support**（~2.5h）：§4（含 §4.6 资源创建规范）写入 `addons/support/resources/boost/guidelines/core.blade.php`（「组件工厂」小节后，新增 `### Filament Resource 风格统一` 小节）；同步主应用 AGENTS.md support 区段（`php artisan list` 查 `boost:*` 同步命令，无则手动贴）。support 子模块 commit + 主仓库 commit（含本计划）。
-  > ✅ 2026-09-09 代码已完成，**改动未提交，等用户审阅后自行提交**（提交约定变更：各步骤由用户提交，AI 不再代为 commit/push）。同步机制：`boost.json` agents 仅配 `claude_code`，`php artisan boost:update` 只重生成 CLAUDE.md，AGENTS.md 需用新生成的 CLAUDE.md 整体替换其 boost 区块（`<laravel-boost-guidelines>` 标签内），手写尾部保留。**顺带修复存量 bug**：core.blade.php「侧栏 grid」代码块未用 `@verbatim` 包裹，`@class([...$hasSidebar...])` 编译时变量未定义 → 整个文件渲染失败 → boost 静默丢弃 Support 区段（preference 同查无此问题）。
+  > ✅ 2026-09-09 完成，随 S1/S2 由用户合并提交（support `49c3025`）。同步机制（已简化）：`config/boost.php` 已把 claude_code 的 `guidelines_path` 覆盖为 AGENTS.md，**改完任何包的 core.blade.php 后只需 `php artisan boost:update --no-interaction`**，AGENTS.md 原地更新（只替换 `<laravel-boost-guidelines>` 标签区块，手写尾部天然安全）。**顺带修复存量 bug**：core.blade.php 含 Blade 语法的代码块（如 `@class([...$hasSidebar...])`）必须 `@verbatim` 包裹，否则该文件 Blade 渲染失败 → boost 静默丢弃整个包的规范区段（`boost:update` 用 callSilently 会吞掉失败报告，直接跑 `boost:install` 才能看到 Skipped 列表）。
 
 **P0（基础设施，S1、S2 可分两天）**
 
 - [x] **S1 HasOrderColumn trait**（~2h）：`addons/support/src/Models/Concerns/HasOrderColumn.php` + 功能测试（留空自动填充 max+1 / 显式值不覆盖 / scope 隔离）；`vendor/bin/pint --dirty`；跑新测试；commit。
-  > ✅ 2026-09-09 代码已完成，**改动未提交，等用户审阅后自行提交**；测试 `tests/Feature/Support/HasOrderColumnTest.php`（4 passed / 9 assertions，临时建表 + 匿名模型）。
+  > ✅ 2026-09-09 完成（support `49c3025`，含 Q3 重构：scope 数组改为 `modifyOrderColumnQuery(Builder $query)` 查询定制方式）；测试 `tests/Feature/Support/HasOrderColumnTest.php`（临时建表 + 匿名模型）。
 - [x] **S2 表单/筛选工厂**（~3h）：`statusToggleButtons` / `orderColumnInput` / `statusFilter` 三方法 + zh_cn/en 翻译 + 测试；pint；commit。
-  > ✅ 2026-09-09 代码已完成，**改动未提交，等用户审阅后自行提交**；测试 `tests/Feature/Support/FilamentComponentFactoriesTest.php`（6 passed / 19 assertions）；Support 目录回归 86 passed。注意：support 包中文翻译实际目录为 `resources/lang/zh_CN/`（大写 N），计划中写的 `zh_cn` 在 Windows 大小写不敏感文件系统上会静默落到同一文件，其他包操作翻译时留意。
+  > ✅ 2026-09-09 完成（support `49c3025`；Q1 后工厂 label 内置通用翻译，调用方与默认一致时不再 `->label()`）；测试 `tests/Feature/Support/FilamentComponentFactoriesTest.php`。注意：support 包中文翻译实际目录为 `resources/lang/zh_CN/`（大写 N），计划中写的 `zh_cn` 在 Windows 大小写不敏感文件系统上会静默落到同一文件，其他包操作翻译时留意。
 
 **P1（核心业务包，cms 三步、category 两步）**
 
-- [ ] **S3 cms 枚举统一**（~1h）：4 个枚举颜色/图标按 §4.4 映射表改；`grep -r "success\|primary\|info" tests/` 核对断言；跑 `php artisan test --compact --filter=Cms`；commit。
-- [ ] **S4 cms 表格改造**（~3h）：PostsTable / LinksTable（badge + desc + direction + statusFilter）、NavigationTypesTable（badge + statusFilter，asc + direction）；核对 §3 前端排序盘点表（cms 前端已全 desc，一致）；跑 cms 测试 + 手动开面板看顺序；commit。
-- [ ] **S5 cms 表单改造**（~3h）：**PostForm 去 Flex 平铺**（多 Section，order/status 放最上 Section）、LinkForm / NavigationTypeForm 换工厂、NavigationForm（nestedset）status 组件；Post/Link/NavigationType 模型 use HasOrderColumn；跑测试；commit。
-- [ ] **S6a category 枚举+表格**（~1.5h）：2 个枚举换色换图标；CategoryTypesTable badge + statusFilter + direction；跑测试；commit。
-- [ ] **S6b category 表单**（~1.5h）：**CategoryTypeForm 去 Flex 平铺**（样板案例）；CategoryForm（nestedset）status 组件；CategoryType 模型 use HasOrderColumn；commit。
+- [x] **S3 cms 枚举统一**（~1h）：4 个枚举颜色/图标按 §4.4 映射表改；`grep -r "success\|primary\|info" tests/` 核对断言；跑 `php artisan test --compact --filter=Cms`；commit。
+- [x] **S4 cms 表格改造**（~3h）：PostsTable / LinksTable（badge + desc + direction + statusFilter）、NavigationTypesTable（badge + statusFilter，asc + direction）；核对 §3 前端排序盘点表（cms 前端已全 desc，一致）；跑 cms 测试 + 手动开面板看顺序；commit。
+- [x] **S5 cms 表单改造**（~3h）：**PostForm 去 Flex 平铺**（多 Section，order/status 放最上 Section）、LinkForm / NavigationTypeForm 换工厂、NavigationForm（nestedset）status 组件；Post/Link/NavigationType 模型 use HasOrderColumn；跑测试；commit。
+- [x] **S6a category 枚举+表格**（~1.5h）：2 个枚举换色换图标；CategoryTypesTable badge + statusFilter + direction；跑测试；commit。
+- [x] **S6b category 表单**（~1.5h）：**CategoryTypeForm 去 Flex 平铺**（样板案例）；CategoryForm（nestedset）status 组件；CategoryType 模型 use HasOrderColumn；commit。
+  > ✅ 2026-09-09 S3~S6b 完成并已提交：cms `1ffdc72`（S3 枚举）/ `9c017b2`（S4 表格）/ `a092c74`（S5 表单+模型），category `62e35e7`（S6a）/ `7985eab`（S6b）。cms + category 测试 98 passed / 382 assertions，pint 通过，cms/category 表单 Flex 已清零。**行为变化待确认**：PostForm 的 status 默认值由 `Published` 变为工厂默认第一 case `Draft`（如需保留发布默认，在工厂调用后链 `->default(PostStatus::Published)`）。S4 的「手动开面板看顺序」待用户自验。
 
 **P2（次要包）**
 
-- [ ] **S7 user + member**（~2h）：两枚举 success→primary；两 Table 补筛选/badge 核对；Form status 换工厂；跑测试；commit。
-- [ ] **S8 comment**（~2h）：CommentStatus 图标 outlined 化（颜色不动）；CommentTable 补时间筛选 + statusFilter；全局搜枚举 `getIcon()` 引用核对前端视觉；跑 comment 测试；commit。
-- [ ] **S9 product**（~3h）：AttributeStatus 图标常量化、ProductStatus.Hidden→gray、ProductTable 补 `direction: 'desc'`（重点）、ProductForm 翻译清理 + 换工厂、Attribute/Spec/Product children 排序方向核对统一、TagsTable 方法顺序顺带核对；跑 product 测试；commit。
+- [x] **S7 user + member**（~2h）：两枚举 success→primary；两 Table 补筛选/badge 核对；Form status 换工厂；跑测试；commit。
+  > ✔ 2026-09-09 完成（未提交，待用户审阅）：user Status / member MemberStatus Normal success→primary；MemberTable 补 createUpdateRangeFilter；两表单 status 换 statusToggleButtons（顺带修复 UserForm 跨包引用 member 翻译 label 的 bug）。测试 --filter=User 1 passed；pint passed。
+- [x] **S8 comment**（~2h）：CommentStatus 图标 outlined 化（颜色不动）；CommentTable 补时间筛选 + statusFilter；全局搜枚举 `getIcon()` 引用核对前端视觉；跑 comment 测试；commit。
+  > ✔ 2026-09-09 完成（未提交）：CommentStatus 图标全 Outlined 化；Normal 色 success→primary（按 §4.4 色板落地，原计划本行「颜色不动」为核对疏漏）；CommentTable status 列补 badge、statusFilter 换工厂并前移、补 createUpdateRangeFilter；语言包孤儿 key filter.status 清理。前端 getIcon() 消费方核查无影响；无 Comment 测试覆盖；pint passed。
+- [x] **S9 product**（~3h）：AttributeStatus 图标常量化、ProductStatus.Hidden→gray、ProductTable 补 `direction: 'desc'`（重点）、ProductForm 翻译清理 + 换工厂、Attribute/Spec/Product children 排序方向核对统一、TagsTable 方法顺序顺带核对；跑 product 测试；commit。
 
 **P2（收尾）**
 
+  > ✔ 2026-09-09 完成（未提交）：三枚举重写（AttributeStatus 字符串图标→Outlined 常量+翻译、ProductStatus.Hidden info→gray、VariantStatus.Down gray→danger，硬编码中文 label 全部走翻译 key）；ProductTable 补 direction: desc（拖拽语义修复）+ status badge + statusFilter 工厂 + 翻译；ProductForm status/order 换工厂（status 默认仍为 Up，与工厂默认一致）；新建 resources/lang/{zh_CN,en}/product.php（同时修复 BaseResource model_label 等四个 key 自发布以来缺失的存量 bug）。**对 §9 决策 6 的有据修正**：Spec/Product/Variant 关联排序保持 asc（ProductSpecService 以 0,1,2… 递增写 order_column、toFormState 依赖「第一项=主规格」、ProductSpecReorderTest 断言依赖此刻度，翻 desc 会破坏主多规格回填）；Attribute.children 维持 desc；Product/Spec/Attribute 未引入 HasOrderColumn（order 由规格引擎/Repeater orderColumn 管理，叠加 max+1 会冲突）。测试 --filter=Product 34 passed / 206 assertions；pint passed。
 - [ ] **S10 全量回归**（~1h）：`php artisan test --compact` 全量；逐面板人工核对（badge 颜色、拖拽方向、筛选齐全、表单平铺无侧栏）；最后统一检查各子模块指针已提交。
 
 ## 8. 风险与注意点
@@ -346,3 +350,65 @@ Resources/Xxxs/
 | 4 | Draft 色：info vs gray | **gray**（统一弱化色） |
 | 5 | 内容型表（posts/links/products）defaultSort desc | **desc**（前端已全 desc，前后台一致） |
 | 6 | product 关联排序方向分裂（Attribute desc vs Spec/Product asc） | **S9 核对后统一，方向跟随该表 defaultSort 方向（product 域 = desc）** |
+
+## 10. 执行进度与换机交接（2026-09-09 记录）
+
+> 本节供换电脑后的新会话快速接续。核心结论：**P0 + P1 已全部完成并提交，从 S7（P2 第一步）继续即可**。
+
+### 10.1 已完成步骤与 commit 记录
+
+| 步骤 | 提交（子模块） | 备注 |
+|---|---|---|
+| S0 规范落地 + S1 trait + S2 工厂 | support `49c3025` | 用户合并提交；含 Q3 重构（scope 数组 → `modifyOrderColumnQuery(Builder $query)`） |
+| Q1/Q3 优化（工厂 label 内置 + 规范补充） | support `02f478f` | label 与默认一致时调用方不再 `->label()`、不新增语言包 key |
+| S3 cms 枚举 | cms `1ffdc72` | 4 枚举：Normal→primary + OutlinedCheckCircle；PostStatus.Draft info→gray |
+| S4 cms 表格 | cms `9c017b2` | 3 表格：badge / desc+direction:desc（posts/links）/ asc+direction:asc（nav types）/ statusFilter |
+| S5 cms 表单+模型 | cms `a092c74` | PostForm 去 Flex 平铺；LinkForm/NavigationTypeForm/NavigationForm 换工厂；Post/Link/NavigationType use HasOrderColumn |
+| S6a category 枚举+表格 | category `62e35e7` | 2 枚举 + CategoryTypesTable |
+| S6b category 表单+模型 | category `7985eab` | CategoryTypeForm 去 Flex；CategoryForm 换工厂；CategoryType use HasOrderColumn |
+
+| S7 user+member | user `3832a83` / member `7f4b392` | 枚举 primary 化；MemberTable 补时间筛选；两表单换工厂（顺带修 UserForm 跨包 label bug） |
+| S8 comment | comment `ae8e02d` | 图标 outlined 化 + Normal→primary；badge/筛选补齐；孤儿 key 清理 |
+| S9 product | product `bb0bb32` | 枚举对齐+拖拽 direction 修复+语言包新建（含 BaseResource 存量 key 修复）；关联排序保持 asc（见步骤备注） |
+
+以上 S7~S9 提交同样未推送远程，推送由用户决定。
+
+### 10.2 换机前必做（重要：不提交就会丢）
+
+主仓库尚有一批**未提交**文件，换机前必须先 commit：
+
+- ~~三个子模块指针~~（S7~S9 提交后随主仓库收尾提交更新：user `3832a83`、member `7f4b392`、comment `ae8e02d`、product `bb0bb32`）
+- `AGENTS.md` / `CLAUDE.md` / `boost.json` / `config/boost.php`（boost 同步与定制）
+- 本计划文件（含本节交接信息；§10.2 其余配套文件已于主仓库 `88cb083` 提交）
+- `tests/Feature/Support/HasOrderColumnTest.php`、`tests/Feature/Support/FilamentComponentFactoriesTest.php`
+
+参考提交信息：
+
+```
+同步 boost 规则到 AGENTS.md，新增 config/boost.php 定制与 P0 测试，cms/category 指针更新
+
+- config/boost.php：claude_code guidelines_path 覆盖为 AGENTS.md，
+  boost:update 从此直接原地更新 AGENTS.md
+- AGENTS.md/CLAUDE.md：同步 Filament Resource 风格统一规范
+- 测试：HasOrderColumnTest、FilamentComponentFactoriesTest
+- cms/category/support 子模块指针更新至风格统一改造后的提交
+- 计划勾选 S0~S6b
+```
+
+新机器初始化：composer install（vendor/wsmallnews/* 是指向 addons/* 的软链，Windows 下需重建）→ `php artisan migrate:fresh`（开发库可重建）→ 跑一遍 `php artisan test --compact tests/Feature/Support/` 验证环境。
+
+### 10.3 机制与坑（新环境必读）
+
+1. **boost 同步已一条命令化**：`config/boost.php` 把 claude_code 的 `guidelines_path` 覆盖为 AGENTS.md。改任何包 `resources/boost/guidelines/core.blade.php` 后执行 `php artisan boost:update --no-interaction`，AGENTS.md 原地更新（只替换 `<laravel-boost-guidelines>` 标签区块，标签外的手写内容安全）。`boost.json` 是 boost 的安装清单（agents/packages/开关），与 config/boost.php 职责不同，两者都保留。
+2. **core.blade.php 的 Blade 语法陷阱**：代码块里含 `@class`、`{{ }}`、未定义 `$变量` 等 Blade 可编译内容时，必须用 `@verbatim`/`@endverbatim` 包裹，否则整个文件的渲染失败 → boost **静默丢弃该包的整个规范区段**（失败报告只在直接跑 `boost:install` 时可见，`boost:update` 内部 callSilently 会吞掉）。
+3. **Windows 大小写陷阱**：语言包实际目录是 `zh_CN`（大写 N）；用小写 `zh_cn` 读写会静默命中同一物理文件，但 git add 时可能漏掉。提交前用 `git status` 核对。同理，暂存区可能有用户预 add 的文件，**提交前务必 `git show --stat HEAD` 核对提交内容与信息一致**（cms 首次提交曾因此混入 14 个文件，已 reset 重做）。
+4. **提交约定**：AI 默认不 commit/push，改完代码跑测试后汇报，由用户审阅提交；用户明确要求时才代劳。
+5. **测试位置**：扩展包的功能测试放主应用 `tests/Feature/<包名>/`（Pest + RefreshDatabase，sqlite 内存）。HasOrderColumn 测试用 `Schema::create` 临时建表 + 匿名模型类。
+6. **php 不在 PATH**（Windows/Herd）：本机用 `C:\Users\<user>\.config\herd\bin\php84\php.exe`，pint 用 `php.exe vendor/bin/pint --dirty --format agent`；换机后路径随 Herd 安装位置变化。
+7. **枚举图标/颜色的前端引用**：cms 包内 `getIcon()` 引用多为 PostFlag（未动）；改状态枚举前先全局 grep 确认。
+
+### 10.4 遗留与待验证
+
+- **PostForm status 默认值已从 `Published` 变为 `Draft`**（工厂默认第一 case）——待用户确认接受，或改回（工厂调用后链 `->default(PostStatus::Published)`）。
+- **S4「手动开面板看顺序」未做**：posts/links 后台顺序应与前端一致（新记录在前）、status 彩色 badge、拖拽一条后顺序正确不颠倒。
+- **S7/S8/S9 已于 2026-09-09 完成（未提交，待用户审阅 commit）**；S10 自动化全量测试已跑（结果见核验记录），**逐面板人工核对（badge 颜色、拖拽方向、筛选齐全、表单平铺）待用户执行**。S9 的关联排序方向处理与 HasOrderColumn 引入范围见 S9 步骤备注（与 §9 决策 6 有出入，已给依据）。S9 重点：ProductTable 补 `direction: 'desc'`（现状拖拽语义错误）、ProductForm 硬编码中文 label 清理、Attribute/Spec/Product 关联排序方向统一（见 §3 盘点表）。
