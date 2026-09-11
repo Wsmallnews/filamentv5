@@ -63,6 +63,46 @@ it('拆词为 AND 语义、字段间 OR 语义', function () {
         ->and(Search::search('sn-cms', '从零开始')->flatten())->toHaveCount(1);
 });
 
+it('terms_operator = or 时任一词命中即返回', function () {
+    config(['sn-support.search.terms_operator' => 'or']);
+    registerPostSource();
+    createSearchPost(['title' => 'Laravel 入门教程']);
+    createSearchPost(['title' => 'Laravel 进阶']);
+    createSearchPost(['title' => '完全无关的内容']);
+
+    $results = Search::search('sn-cms', 'Laravel 入门')->flatten();
+
+    expect($results)->toHaveCount(2)
+        ->and($results->pluck('title')->sort()->values()->all())->toBe(['Laravel 入门教程', 'Laravel 进阶']);
+});
+
+it('terms_operator 支持模块声明覆盖全局', function () {
+    config(['sn-support.search.terms_operator' => 'or']);
+    Search::config('sn-cms', ['terms_operator' => 'and']);
+    registerPostSource();
+    createSearchPost(['title' => 'Laravel 入门教程', 'description' => '从零开始']);
+    createSearchPost(['title' => 'Laravel 进阶']);
+    createSearchPost(['title' => '完全无关的内容']);
+
+    // 模块声明 and 覆盖全局 or：仍需所有词都命中
+    $results = Search::search('sn-cms', 'Laravel 入门')->flatten();
+
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->title)->toBe('Laravel 入门教程');
+});
+
+it('terms_operator 模块声明为 null 时回退全局', function () {
+    config(['sn-support.search.terms_operator' => 'or']);
+    Search::config('sn-cms', ['terms_operator' => null]);
+    registerPostSource();
+    createSearchPost(['title' => '桃子 种质资源']);
+    createSearchPost(['title' => '苹果 种质资源']);
+    createSearchPost(['title' => '完全无关的内容']);
+
+    // null 视为未声明，走全局 or：任一词命中即返回
+    expect(Search::search('sn-cms', '桃子 种质')->flatten())->toHaveCount(2);
+});
+
 it('query 闭包过滤草稿状态', function () {
     registerPostSource();
     createSearchPost(['title' => '已发布文章', 'status' => 'published']);

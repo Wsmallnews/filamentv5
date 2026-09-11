@@ -169,3 +169,36 @@ it('来源可声明自定义条目视图与渲染闭包', function () {
         ->and(Search::itemRenderers('sn-other')['post']['render'])->toBeInstanceOf(Closure::class)
         ->and(Search::itemRenderers('sn-demo')['post']['view'])->toBe(SearchSource::DEFAULT_ITEM_VIEW);
 });
+
+it('resolveConfig 统一解析：模块声明优先、null 回退全局、均未声明返回默认', function () {
+    config(['sn-support.search.results_limit' => 8]);
+    Search::config('sn-demo', ['results_limit' => 5]);
+
+    expect(Search::resolveConfig('sn-demo', 'results_limit'))->toBe(5)
+        ->and(Search::resolveConfig('sn-other', 'results_limit'))->toBe(8)
+        ->and(Search::resolveConfig(null, 'results_limit'))->toBe(8);
+
+    // 声明 null 视为未声明，恢复全局兜底
+    Search::config('sn-demo', ['results_limit' => null]);
+    expect(Search::resolveConfig('sn-demo', 'results_limit'))->toBe(8)
+        ->and(Search::resolveConfig(null, 'not_exists', 'fallback'))->toBe('fallback');
+});
+
+it('results_limit 模块声明覆盖来源默认条数，来源显式 limit 优先', function () {
+    config(['sn-support.search.results_limit' => 8]);
+    Search::config('sn-demo', ['results_limit' => 2]);
+    Search::registers('sn-demo', [
+        ['key' => 'post', 'model' => Post::class, 'group' => '图文', 'url' => null],
+    ]);
+    foreach (['一', '二', '三'] as $i => $n) {
+        createRegistryPost("模块限流文章{$n}", "module-limit-{$i}");
+    }
+
+    expect(Search::search('sn-demo', '模块限流')->flatten())->toHaveCount(2);
+
+    // 来源显式声明 limit 时优先于模块 results_limit
+    Search::registers('sn-demo', [
+        ['key' => 'post', 'model' => Post::class, 'group' => '图文', 'url' => null, 'limit' => 3],
+    ]);
+    expect(Search::search('sn-demo', '模块限流')->flatten())->toHaveCount(3);
+});

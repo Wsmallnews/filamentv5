@@ -109,7 +109,8 @@ it('module 绑定模块后只返回该模块的结果', function () {
     ]);
     createComponentPost(['title' => '模块绑定文章']);
 
-    livewire('sn-support::components.search', ['module' => 'sn-cms'])
+    // 显式 dropdown：应用已发布配置 sn-cms.search.display = page 会经模块声明生效
+    livewire('sn-support::components.search', ['module' => 'sn-cms', 'display' => 'dropdown'])
         ->set('query', '模块绑定')
         ->assertSee('图文')
         ->assertDontSee('其他');
@@ -149,15 +150,16 @@ it('page 模式支持字符串声明与全局兜底解析', function () {
 });
 
 it('config 增量合并声明同模块的多个选项', function () {
-    Search::config('sn-cms', ['engine' => 'database']);
-    Search::config('sn-cms', ['page' => '/cms/search']);
+    // 用独立模块名，避免 cms 服务提供者预置的 sn-cms 声明（terms_operator 等）干扰全量断言
+    Search::config('sn-demo', ['engine' => 'database']);
+    Search::config('sn-demo', ['page' => '/cms/search']);
 
-    expect(Search::getConfig('sn-cms'))->toBe(['engine' => 'database', 'page' => '/cms/search'])
-        ->and(Search::getConfig('sn-cms', 'engine'))->toBe('database')
-        ->and(Search::getConfig('sn-cms', 'page'))->toBe('/cms/search');
+    expect(Search::getConfig('sn-demo'))->toBe(['engine' => 'database', 'page' => '/cms/search'])
+        ->and(Search::getConfig('sn-demo', 'engine'))->toBe('database')
+        ->and(Search::getConfig('sn-demo', 'page'))->toBe('/cms/search');
 
-    Search::forget('sn-cms');
-    expect(Search::getConfig('sn-cms'))->toBe([]);
+    Search::forget('sn-demo');
+    expect(Search::getConfig('sn-demo'))->toBe([]);
 });
 
 it('display 为 page 时输入框不实时搜索且无下拉浮层', function () {
@@ -168,6 +170,9 @@ it('display 为 page 时输入框不实时搜索且无下拉浮层', function ()
 });
 
 it('page 模式以 wrapper suffix 常驻渲染 Enter 提示，dropdown 模式不渲染', function () {
+    // 应用已发布配置为 sn-cms 声明了 show_search_button（会替代 Enter 提示），先清除以验证默认
+    Search::config('sn-cms', ['show_search_button' => null]);
+
     livewire('sn-support::components.search', ['display' => 'page', 'module' => 'sn-cms'])
         ->assertSeeHtml('fi-input-wrp-suffix')
         ->assertSee('↵ Enter');
@@ -175,6 +180,82 @@ it('page 模式以 wrapper suffix 常驻渲染 Enter 提示，dropdown 模式不
     livewire('sn-support::components.search')
         ->assertDontSeeHtml('fi-input-wrp-suffix')
         ->assertDontSee('↵ Enter');
+});
+
+it('show_search_button 开启时 page 模式渲染一体化搜索按钮并替代 Enter 提示', function () {
+    config(['sn-support.search.show_search_button' => true]);
+
+    // 自定义按钮 HTML 经 wrapper 的 suffix 渲染：sn-search-submit 样式类 + wire:click；
+    // 类序断言证明 suffix 非 inline（fi-inline 不在其间）—— 与输入框之间保留竖向分割线
+    livewire('sn-support::components.search', ['display' => 'page', 'module' => 'sn-cms'])
+        ->assertSeeHtml('sn-search-submit')
+        ->assertSeeHtml('wire:click="gotoSearchPage"')
+        ->assertSeeHtml('fi-input-wrp-suffix fi-input-wrp-suffix-has-label')
+        ->assertSee('搜索')
+        ->assertDontSee('↵ Enter');
+
+    // 按钮与回车等价：点击同样跳转结果页
+    Search::config('sn-cms', ['page' => '/cms/search']);
+
+    livewire('sn-support::components.search', ['display' => 'page', 'module' => 'sn-cms'])
+        ->set('query', '组件搜索')
+        ->call('gotoSearchPage')
+        ->assertRedirect('/cms/search?q='.urlencode('组件搜索'));
+});
+
+it('show_search_button 仅在 page 模式生效，dropdown 模式不渲染', function () {
+    config(['sn-support.search.show_search_button' => true]);
+
+    // 组件属性优先于模块/全局（模块 display = page 不影响显式 dropdown）
+    livewire('sn-support::components.search', ['module' => 'sn-cms', 'display' => 'dropdown'])
+        ->assertDontSeeHtml('wire:click="gotoSearchPage"');
+});
+
+it('show_search_button 支持模块声明覆盖全局', function () {
+    config(['sn-support.search.show_search_button' => false]);
+    Search::config('sn-cms', ['show_search_button' => true]);
+
+    livewire('sn-support::components.search', ['display' => 'page', 'module' => 'sn-cms'])
+        ->assertSeeHtml('wire:click="gotoSearchPage"');
+});
+
+it('showButton 组件属性优先于配置', function () {
+    config(['sn-support.search.show_search_button' => true]);
+
+    livewire('sn-support::components.search', ['display' => 'page', 'module' => 'sn-cms', 'showButton' => false])
+        ->assertDontSeeHtml('wire:click="gotoSearchPage"')
+        ->assertSee('↵ Enter');
+
+    Search::config('sn-cms', ['show_search_button' => false]);
+
+    livewire('sn-support::components.search', ['display' => 'page', 'module' => 'sn-cms', 'showButton' => true])
+        ->assertSeeHtml('wire:click="gotoSearchPage"');
+});
+
+it('display 与 debounce 支持模块声明覆盖（经 Search::config 通道）', function () {
+    Search::config('sn-demo', ['display' => 'page', 'debounce' => '500ms']);
+
+    // 模块声明 display = page：不实时搜索，渲染 Enter 提示
+    livewire('sn-support::components.search', ['module' => 'sn-demo'])
+        ->assertDontSeeHtml('wire:model.live')
+        ->assertSee('↵ Enter');
+
+    // 模块声明 debounce 覆盖全局（dropdown 模式渲染到 wire:model.live）
+    Search::config('sn-demo', ['display' => 'dropdown']);
+
+    livewire('sn-support::components.search', ['module' => 'sn-demo'])
+        ->assertSeeHtml('wire:model.live.debounce.500ms="query"');
+
+    Search::forget('sn-demo');
+});
+
+it('cms 注册时整节透传 sn-cms.search：剔除 enabled、page 由包闭包兜底', function () {
+    // 应用已发布配置的 search 节整节进入注册表（display = page）
+    expect(Search::getConfig('sn-cms', 'display'))->toBe(config('sn-cms.search.display'))
+        // enabled 是 cms 启用门控，不透传
+        ->and(Search::getConfig('sn-cms', 'enabled'))->toBeNull()
+        // page 未声明时由包内结果页路由闭包兜底
+        ->and(Search::getConfig('sn-cms', 'page'))->toBeCallable();
 });
 
 it('page 模式关键词为空时不跳转', function () {

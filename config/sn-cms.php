@@ -224,6 +224,12 @@ return [
 
     /**
      * 全局搜索（前端搜索框仅在本模块启用时渲染，来源也仅在启用时参与搜索）
+     *
+     * 本节除 enabled 外的键整节透传到搜索注册表（Search::config）：想覆盖哪些
+     * search 配置就写哪些键（声明 null = 不覆盖），未写的键走全局兜底
+     * config('sn-support.search.*')。可覆盖键清单见 support 包 config/sn-support.php
+     * 的 search 节：engine / display / page / results_limit / split_terms / terms_operator /
+     * show_search_button / case_insensitive / debounce
      */
     'search' => [
         /**
@@ -232,14 +238,7 @@ return [
         'enabled' => true,
 
         /**
-         * 本模块搜索引擎：'database' | 'scout' | 引擎类名；null 走全局兜底
-         * （config('sn-support.search.engine')，默认 database）
-         */
-        'engine' => null,
-
-        /**
          * 搜索结果的展示方式：'dropdown'（输入即搜，浮层展示）| 'page'（回车跳转独立搜索结果页）
-         * null 走全局兜底（config('sn-support.search.display')，默认 dropdown）
          */
         'display' => 'page',
     ],
