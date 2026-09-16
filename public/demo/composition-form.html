@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>内容编排 · 行布局后台表单交互演示</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    [x-cloak], .hidden-slot { display: none !important; }
+    .slot-panel { transition: all .15s ease; }
+</style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800">
+
+<header class="bg-white border-b border-gray-200">
+    <div class="max-w-6xl mx-auto px-6 py-5">
+        <h1 class="text-xl font-bold">内容编排（Composition）· 后台行布局表单交互演示</h1>
+        <p class="text-sm text-gray-500 mt-1">纯静态演示，模拟 Filament 面板表单风格。下方「后台表单」与「前台渲染对照」由同一份演示数据驱动，改布局 / 加组件时对照区实时变化。</p>
+    </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-6 py-8 space-y-10">
+
+    <!-- ============ 后台表单演示 ============ -->
+    <section>
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <h2 class="text-lg font-bold">① 后台表单 · 区块（行）编排</h2>
+                <p class="text-sm text-gray-500 mt-1">每个区块先选 lg 以上的分栏方式（通栏 / 左1右2 / 左2右1），再往对应栏里添加组件；组件可设标题、描述与参数。窄屏（&lt;lg）固定单列，按 左栏 → 右栏 顺序堆叠，无需设置。</p>
+            </div>
+            <button onclick="addRow()" class="shrink-0 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">＋ 添加区块</button>
+        </div>
+        <div id="rows" class="space-y-4"></div>
+        <div id="rows-empty" class="hidden rounded-xl border-2 border-dashed border-gray-300 bg-white p-10 text-center text-gray-400 text-sm">还没有区块，点击右上角「添加区块」开始编排</div>
+    </section>
+
+    <!-- ============ 前台渲染对照 ============ -->
+    <section>
+        <h2 class="text-lg font-bold">② 前台渲染对照（同一份数据）</h2>
+        <p class="text-sm text-gray-500 mt-1 mb-3">左：lg 以上（≥1024px，按区块分栏，比例 1:2 / 2:1 / 通栏）；右：窄屏（&lt;lg，全部单列自动下排）。</p>
+        <div class="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
+            <div class="bg-white rounded-xl border border-gray-200 p-5">
+                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">桌面（lg+）</div>
+                <div id="preview-desktop"></div>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 p-5">
+                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">窄屏（&lt;lg）</div>
+                <div id="preview-mobile"></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-900 space-y-2">
+        <p class="font-bold">交互说明（对应真实实现）</p>
+        <p>· 布局选择用 ToggleButtons + 布局缩略示意图，不用拖拽；一期不做可视化拖拽编辑器。</p>
+        <p>· 槽面板按真实比例排版（左1右2 时左窄右宽），编辑时即所见。</p>
+        <p>· 组件参数（extras）来自 ContentRegistry 各类型注册的 forms，展开后为对应表单。</p>
+        <p>· 组件「标题 / 描述」会在前台该组件区块顶部展示（渲染对照中未画出，仅表单层演示）。</p>
+    </section>
+</main>
+
+<script>
+const TYPES = {
+    'posts':        { label: '文章列表' },
+    'index-posts':  { label: '首页文章' },
+    'post-detail':  { label: '文章详情' },
+    'category-tree':{ label: '分类树' },
+};
+const LAYOUTS = {
+    'full': { label: '通栏',     left: 3, right: 0 },
+    '1-2':  { label: '左1 右2',  left: 1, right: 2 },
+    '2-1':  { label: '左2 右1',  left: 2, right: 1 },
+};
+
+let rows = [
+    { layout: 'full', left: [ { type: 'index-posts', label: '最新文章', desc: '按发布时间倒序' } ], right: [] },
+    { layout: '1-2',  left:  [ { type: 'category-tree', label: '内容分类', desc: '' } ], right: [ { type: 'posts', label: '全部文章', desc: '' } ] },
+];
+
+let rowSeq = rows.length;
+
+/* ---------- 后台表单渲染 ---------- */
+
+function layoutDiagram(layout) {
+    const cfg = LAYOUTS[layout];
+    const bar = (w) => `<span class="inline-block h-3 rounded-[2px] bg-current" style="width:${w * 10}px"></span>`;
+    if (layout === 'full') return bar(3);
+    return `<span class="inline-flex gap-[2px]">${bar(cfg.left)}${bar(cfg.right)}</span>`;
+}
+
+function itemHtml(item, rowIndex, slot) {
+    const idx = rows[rowIndex][slot].indexOf(item);
+    return `
+    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+        <div class="flex items-center gap-2">
+            <span class="cursor-grab text-gray-300 text-xs">⠿</span>
+            <select onchange="setItem(${rowIndex},'${slot}',${idx},'type',this.value)"
+                    class="flex-1 rounded-md border-gray-300 border text-sm bg-white px-2 py-1.5">
+                ${Object.entries(TYPES).map(([k, v]) =>
+                    `<option value="${k}" ${k === item.type ? 'selected' : ''}>${v.label}</option>`).join('')}
+            </select>
+            <button onclick="removeItem(${rowIndex},'${slot}',${idx})"
+                    class="text-gray-300 hover:text-red-500 text-sm px-1" title="删除组件">✕</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <input value="${item.label ?? ''}" oninput="setItem(${rowIndex},'${slot}',${idx},'label',this.value)"
+                   placeholder="标题（前台展示）"
+                   class="rounded-md border border-gray-300 text-sm px-2 py-1.5">
+            <input value="${item.desc ?? ''}" oninput="setItem(${rowIndex},'${slot}',${idx},'desc',this.value)"
+                   placeholder="描述（前台展示）"
+                   class="rounded-md border border-gray-300 text-sm px-2 py-1.5">
+        </div>
+        <details class="text-sm">
+            <summary class="cursor-pointer text-gray-400 select-none text-xs">组件参数（ContentRegistry 表单）</summary>
+            <div class="mt-2 rounded-md bg-white border border-dashed border-gray-300 p-3 text-xs text-gray-400">
+                ${TYPES[item.type].label} 的注册表单区（真实实现由 ContentRegistry::getTypeForms() 注入）
+            </div>
+        </details>
+    </div>`;
+}
+
+function slotHtml(row, rowIndex, slot, span) {
+    const title = slot === 'left' ? '左栏' : '右栏';
+    const items = row[slot].map(it => itemHtml(it, rowIndex, slot)).join('');
+    return `
+    <div class="slot-panel rounded-lg border-2 border-dashed ${row[slot].length ? 'border-gray-200' : 'border-gray-300'} bg-white p-3"
+         style="grid-column: span ${span}">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-400">${title}（占 ${span} 栏）</span>
+            <button onclick="addItem(${rowIndex},'${slot}')"
+                    class="text-xs px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium">＋ 组件</button>
+        </div>
+        <div class="space-y-2">${items || '<div class="py-6 text-center text-xs text-gray-300">空槽，点击「＋ 组件」添加</div>'}</div>
+    </div>`;
+}
+
+function rowHtml(row, rowIndex) {
+    const cfg = LAYOUTS[row.layout];
+    const layoutBtns = Object.entries(LAYOUTS).map(([k, v]) => `
+        <button onclick="setLayout(${rowIndex},'${k}')"
+            class="flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium
+                ${k === row.layout ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-gray-200 text-gray-400 hover:border-gray-300'}">
+            <span class="${k === row.layout ? 'text-indigo-500' : 'text-gray-300'}">${layoutDiagram(k)}</span>
+            ${v.label}
+        </button>`).join('');
+
+    const slots = row.layout === 'full'
+        ? slotHtml(row, rowIndex, 'left', 3)
+        : slotHtml(row, rowIndex, 'left', cfg.left) + slotHtml(row, rowIndex, 'right', cfg.right);
+
+    return `
+    <div class="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+        <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+            <span class="cursor-grab text-gray-300">⠿</span>
+            <span class="text-sm font-semibold">区块 ${rowIndex + 1}</span>
+            <div class="flex gap-1.5 ml-2">${layoutBtns}</div>
+            <button onclick="removeRow(${rowIndex})"
+                    class="ml-auto text-gray-300 hover:text-red-500 text-sm px-1" title="删除区块">✕</button>
+        </div>
+        <div class="p-4 grid grid-cols-3 gap-3">${slots}</div>
+    </div>`;
+}
+
+/* ---------- 前台渲染对照 ---------- */
+
+function previewBlock(item) {
+    const name = item.label || TYPES[item.type].label;
+    return `<div class="h-16 rounded-md bg-indigo-100 border border-indigo-200 flex items-center justify-center text-xs text-indigo-500">${name}</div>`;
+}
+
+function renderPreviews() {
+    const desktop = rows.map(row => {
+        const cfg = LAYOUTS[row.layout];
+        const col = (items, span) => `
+            <div style="grid-column: span ${span}" class="space-y-2">
+                ${items.length ? items.map(previewBlock).join('') : '<div class="h-16 rounded-md bg-gray-50 border border-dashed border-gray-200"></div>'}
+            </div>`;
+        const inner = row.layout === 'full'
+            ? col(row.left, 3)
+            : col(row.left, cfg.left) + col(row.right, cfg.right);
+        return `<div class="grid grid-cols-3 gap-2 mb-2">${inner}</div>`;
+    }).join('');
+    const mobile = rows.map(row =>
+        [...row.left, ...row.right].map(item =>
+            `<div class="mb-2">${previewBlock(item)}</div>`).join('')
+    ).join('');
+
+    document.getElementById('preview-desktop').innerHTML = desktop || '<div class="text-xs text-gray-300">暂无区块</div>';
+    document.getElementById('preview-mobile').innerHTML = mobile || '<div class="text-xs text-gray-300">暂无区块</div>';
+}
+
+/* ---------- 状态操作 ---------- */
+
+function render() {
+    document.getElementById('rows').innerHTML = rows.map(rowHtml).join('');
+    document.getElementById('rows-empty').classList.toggle('hidden', rows.length > 0);
+    renderPreviews();
+}
+
+function addRow() {
+    rows.push({ layout: 'full', left: [], right: [] });
+    render();
+}
+function removeRow(i)        { rows.splice(i, 1); render(); }
+function setLayout(i, layout){ rows[i].layout = layout; render(); }
+function addItem(i, slot)    {
+    rows[i][slot].push({ type: 'posts', label: '', desc: '' });
+    render();
+}
+function removeItem(i, slot, idx) { rows[i][slot].splice(idx, 1); render(); }
+function setItem(i, slot, idx, key, val) { rows[i][slot][idx][key] = val; renderPreviews(); }
+
+render();
+</script>
+</body>
+</html>

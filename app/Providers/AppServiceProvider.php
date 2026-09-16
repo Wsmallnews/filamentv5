@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Navigation;
+use App\Models\User;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
-use Wsmallnews\Cms\Facades\ContentRegistry as ContentRegistryFacade;
-use Wsmallnews\Cms\Support\Utils as CmsUtils;
+use Wsmallnews\Cms\CmsPlugin;
+use Wsmallnews\Support\Facades\CompositionRegistry as CompositionRegistryFacade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,14 +29,14 @@ class AppServiceProvider extends ServiceProvider
         Model::unguard();
 
         // 开启 SPA 模式
-        \Filament\Support\Facades\FilamentView::spa(true);
+        FilamentView::spa(true);
 
         Relation::enforceMorphMap([
-            'user' => \App\Models\User::class,
-            'navigation' => \App\Models\Navigation::class
+            'user' => User::class,
+            'navigation' => Navigation::class,
         ]);
 
-        // 注册导航内容
-        ContentRegistryFacade::registers(CmsUtils::getScopeType(), []);
+        // 注册导航内容（key = 模块标识插件 id）
+        CompositionRegistryFacade::registers(app(CmsPlugin::class)->getId(), []);
     }
 }

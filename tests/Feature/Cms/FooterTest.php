@@ -87,8 +87,8 @@ it('区块间距与卡片内边距消费设计令牌而非硬编码响应式对'
     $response = $this->get('/cms');
 
     $response->assertOk()
-        // 首页轮播图与文章列表的区块间距走 sn-gap（lg 自动 4→6）
-        ->assertSee('lg:flex-row sn-gap', false)
+        // 未配置首页编排时渲染空状态提示（IndexPosts 默认示例已移除）
+        ->assertSee(__('sn-cms::cms.frontend.home_empty'), false)
         // 不再有硬编码间距对与固定表单卡 padding
         ->assertDontSee('lg:gap-4', false)
         ->assertDontSee('px-4 py-8', false);

@@ -7,8 +7,8 @@ use Wsmallnews\Cms\Enums\LinkStatus;
 use Wsmallnews\Support\Filament\Filters\FilterComponents;
 use Wsmallnews\Support\Filament\Forms\FormComponents;
 
-it('statusToggleButtons 返回内联分组组件且默认第一个 case', function () {
-    $component = FormComponents::statusToggleButtons(LinkStatus::class);
+it('enumsToggleButtons 返回内联分组组件且默认第一个 case', function () {
+    $component = FormComponents::enumsToggleButtons(LinkStatus::class);
 
     expect($component)->toBeInstanceOf(ToggleButtons::class)
         ->and($component->getName())->toBe('status')
@@ -19,8 +19,8 @@ it('statusToggleButtons 返回内联分组组件且默认第一个 case', functi
         ->and($component->getDefaultState())->toBe(LinkStatus::Normal);
 });
 
-it('statusToggleButtons 支持自定义字段名与标签', function () {
-    $component = FormComponents::statusToggleButtons(LinkStatus::class, 'state', '链接状态');
+it('enumsToggleButtons 支持自定义字段名与标签', function () {
+    $component = FormComponents::enumsToggleButtons(LinkStatus::class, 'state', '链接状态');
 
     expect($component->getName())->toBe('state')
         ->and($component->getLabel())->toBe('链接状态');

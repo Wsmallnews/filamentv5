@@ -11,6 +11,7 @@ use Wsmallnews\Cms\Filament\Resources\Posts\PostResource;
 use Wsmallnews\Cms\Models;
 use Wsmallnews\Comment\Enums\CommentStatus;
 use Wsmallnews\Support\Enums\ContentType;
+use Wsmallnews\Support\Filament\Resources\Compositions\CompositionResource;
 
 return [
     /**
@@ -63,6 +64,12 @@ return [
             NavigationTypeResource::class,
             LinkResource::class,
             PostResource::class,
+            // 零代码注册 support 的编排资源：数据隔离（scope_type/scope_id）+ 组件来源模块（module_id）
+            CompositionResource::class => [
+                'scope_type' => 'sn-cms',
+                'scope_id' => 0,
+                'module_id' => 'sn-cms',
+            ],
         ],
         'pages' => [
             PostCategoryPage::class => [
