@@ -15,3 +15,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | addons/cms/src/** | .ai/rules/src.md |
 | addons/cms/src/**, addons/support/src/** | .ai/rules/support-src.md |
 | addons/cms/resources/views/** | .ai/rules/views.md |
+| (全项目) | .ai/rules/environment.md |

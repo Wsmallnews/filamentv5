@@ -33,3 +33,6 @@ paths:
     </div>
 </div>
 ```
+
+## 前台空态用 x-sn-support::empty，Filament 面板内用 x-filament::empty-state，不混用
+前台（Livewire 组件/主题视图）的空状态一律 `<x-sn-support::empty>`（sn-empty 令牌族：icon/heading/description/footer/actions/compact/contained）；Filament 面板语境（资源页、面板组件）用官方 `<x-filament::empty-state>`。两个体系的图标/配色/间距规范不同，不要在面板里用 sn 系空态或在前台用 fi 系空态。

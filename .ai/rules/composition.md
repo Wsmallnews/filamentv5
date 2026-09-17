@@ -27,3 +27,7 @@ paths:
 - CompositionForm 的类型切换 afterStateUpdated 里用 `getTypeForms` 显式构造 extras 重置值（字段名为键的关联数组 + `getDefaultState()` 默认值）：**不要 `$set('extras', [])`**（空索引数组会让前端 entangle 的字符串键在 JSON 序列化时丢失，参数保存不上），也不依赖 `getComponent()->getChildSchema()->fill()`（其产物随注册表单是否包 Group 而变，不可控）；extras Fieldset 用 `->key('dynamicExtrasFields')` 固定相对 key（随机 uuid key 会导致下拉往返时 DOM 重建、闪关）；
 - 新组件视图遵循 container-queries.md（自含 `@container` + 容器断点）；
 - scopeable 由注册时的固定参数 / 调用处传入，组件不读模块默认 scope（livewire.md）。
+
+## 组件间事件（D 期预留草案，未实施）
+
+出现运行期松耦合通知需求时按此约定实施（当前无场景，勿提前抽象）：优先 Alpine `$dispatch`（同页 DOM 局部、零网络），跨页面/跨 Livewire 组件才用 `dispatch`；事件名统一前缀 `sn-composition::`，payload 必带 `blockKey`（编排条目键）供监听方过滤同源；只做通知类松耦合——交互强耦合做复合组件，渲染期能定的走 provides/context。

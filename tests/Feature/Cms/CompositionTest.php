@@ -170,6 +170,38 @@ it('条目开关：show_header/contained 关闭后透传 false，缺省回退 tr
         ->and($block['extras']['contained'])->toBeFalse();
 });
 
+it('切换组件类型后 label 回填且 extras 初始化为关联数组（保存链路前置保证）', function () {
+    // 起步用无表单的 dummy-block，避免 posts 的 SelectTree 在初始渲染查询分类表（测试库无该 stub 迁移）
+    $composition = createComposition(['components' => [
+        [
+            'layout' => 'full',
+            'left' => [['type' => 'dummy-block', 'label' => '占位', 'description' => null, 'extras' => []]],
+            'right' => [],
+        ],
+    ]]);
+
+    // 整个交互（含 fillForm 触发的 afterStateUpdated）都要在资源配置上下文内——闭包外调用会丢 moduleId，label/extras 不生效
+    $item = withCompositionConfiguration(function () use ($composition) {
+        $livewire = livewire(EditComposition::class, ['record' => $composition->id]);
+
+        // repeater hydrate 会重新生成条目 uuid，从实例读实际路径；fillForm 走字段更新生命周期（触发 afterStateUpdated）
+        $instance = $livewire->instance();
+        $rowUuid = array_key_first($instance->data['components']);
+        $itemUuid = array_key_first($instance->data['components'][$rowUuid]['left']);
+
+        $livewire->fillForm([
+            "components.{$rowUuid}.left.{$itemUuid}.type" => 'post-detail',
+        ]);
+
+        return $livewire->instance()->data['components'][$rowUuid]['left'][$itemUuid];
+    });
+
+    expect($item['type'])->toBe('post-detail')
+        ->and($item['label'])->toBe(__('sn-cms::cms.content_type.post_detail'))
+        // extras 必须是含注册表单字段键的关联数组：空索引数组会让前端 entangle 的字符串键在序列化时丢失
+        ->and($item['extras'])->toBe(['id' => null]);
+});
+
 it('resolveRows 跳过未注册组件类型且未知布局回退通栏', function () {
     $rows = [
         [
