@@ -6,7 +6,9 @@ use Wsmallnews\Cms\Enums\NavigationTypeStatus;
 use Wsmallnews\Cms\Models\Navigation;
 use Wsmallnews\Cms\Models\NavigationType;
 use Wsmallnews\Cms\Models\Post;
+use Wsmallnews\Support\Enums\PageStatus;
 use Wsmallnews\Support\Facades\Sitemap;
+use Wsmallnews\Support\Models\Page;
 
 uses(RefreshDatabase::class);
 
@@ -82,19 +84,27 @@ it('其他 scope 的文章不进当前 sitemap（租户/scope 隔离）', functi
         ->not->toContain('sitemap-other-scope-post');
 });
 
-it('导航页面（Page/Content 型）进 sitemap', function () {
-    Navigation::create([
-        'name' => '关于我们',
+it('站点页面以 Page 实体为源进 sitemap，草稿页面不进', function () {
+    Page::create([
+        'title' => '关于我们',
         'slug' => 'about-us',
-        'type' => 'page',
-        'status' => 'normal',
+        'status' => PageStatus::Published,
+        'scope_type' => 'sn-cms',
+        'scope_id' => 0,
+    ]);
+    Page::create([
+        'title' => '草稿页',
+        'slug' => 'draft-page',
+        'status' => PageStatus::Draft,
         'scope_type' => 'sn-cms',
         'scope_id' => 0,
     ]);
 
     $xml = $this->get('/sitemap.xml')->getContent();
 
-    expect($xml)->toContain('<loc>'.url('/cms/navigation/about-us').'</loc>');
+    expect($xml)->toContain('<loc>'.url('/cms/pages/about-us').'</loc>')
+        ->not->toContain('draft-page')
+        ->not->toContain('/cms/navigation/');
 });
 
 it('robots.txt 自动发现 Filament 面板路径并输出模块注册的禁爬规则', function () {

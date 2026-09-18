@@ -12,6 +12,7 @@ use Wsmallnews\Cms\Models;
 use Wsmallnews\Comment\Enums\CommentStatus;
 use Wsmallnews\Support\Enums\ContentType;
 use Wsmallnews\Support\Filament\Resources\Compositions\CompositionResource;
+use Wsmallnews\Support\Filament\Resources\Pages\PageResource;
 
 return [
     /**
@@ -69,6 +70,11 @@ return [
                 'scope_type' => 'sn-cms',
                 'scope_id' => 0,
                 'module_id' => 'sn-cms',
+            ],
+            // 站点页面资源（Page 实体：slug → composition 绑定）
+            PageResource::class => [
+                'scope_type' => 'sn-cms',
+                'scope_id' => 0,
             ],
         ],
         'pages' => [
@@ -134,10 +140,6 @@ return [
             'types' => null,
             'default_type' => ContentType::Richtext,
         ],
-        'navigation' => [
-            'types' => null,
-            'default_type' => ContentType::Markdown,
-        ],
     ],
 
     'routes' => [
@@ -168,7 +170,6 @@ return [
          * Default route key name for the cms models.
          */
         'route_key_name' => [
-            'navigation' => 'slug',
             'post' => 'slug',
         ],
         /**
@@ -176,9 +177,9 @@ return [
          */
         'uri' => [
             'index' => '/',
-            'navigation-show' => 'navigation/{slug}',
             'posts' => 'posts',
             'posts-show' => 'posts/{slug}',
+            'pages-show' => 'pages/{slug}',
 
             // 全局搜索结果页（search.display = 'page' 时搜索框回车跳转目标）
             'search' => 'search',

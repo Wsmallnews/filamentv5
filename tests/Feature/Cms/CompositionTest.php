@@ -4,6 +4,7 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\Livewire;
 use Wsmallnews\Cms\Enums\NavigationTypeStatus;
@@ -13,12 +14,14 @@ use Wsmallnews\Cms\Models\NavigationType;
 use Wsmallnews\Cms\Models\Post;
 use Wsmallnews\Cms\Support\Utils;
 use Wsmallnews\Support\Enums\CompositionStatus;
+use Wsmallnews\Support\Enums\PageStatus;
 use Wsmallnews\Support\Facades\CompositionRegistry;
 use Wsmallnews\Support\Features\Composition\CompositionRenderer;
 use Wsmallnews\Support\Filament\Resources\Compositions\Pages\CreateComposition;
 use Wsmallnews\Support\Filament\Resources\Compositions\Pages\EditComposition;
 use Wsmallnews\Support\Filament\Resources\Compositions\Pages\ListCompositions;
 use Wsmallnews\Support\Models\Composition;
+use Wsmallnews\Support\Models\Page;
 
 use function Pest\Laravel\assertDatabaseHas;
 use function Pest\Livewire\livewire;
@@ -80,17 +83,32 @@ function createComposition(array $attributes = []): Composition
 /**
  * 创建一条内容型导航
  */
-function createContentNav(string $name, array $attributes = []): Navigation
+function createPageNav(string $name, array $attributes = [], ?int $pageId = null): Navigation
 {
     return Navigation::create(array_merge([
         'name' => $name,
-        'slug' => 'content-'.$name,
-        'type' => 'content',
+        'type' => 'page',
         'status' => 'normal',
         'scope_type' => 'sn-cms',
         'scope_id' => 0,
         'type_id' => test()->typeId,
+        'page_id' => $pageId,
         'options' => [],
+    ], $attributes));
+}
+
+/**
+ * 建一个绑编排的 Page（首页/页面节点引用用）
+ */
+function createBoundPage(string $title, int $compositionId, array $attributes = []): Page
+{
+    return Page::create(array_merge([
+        'title' => $title,
+        'slug' => 'page-'.Str::slug($title).'-'.uniqid(),
+        'composition_id' => $compositionId,
+        'status' => PageStatus::Published,
+        'scope_type' => 'sn-cms',
+        'scope_id' => 0,
     ], $attributes));
 }
 
@@ -409,9 +427,10 @@ it('首页未绑定编排时渲染空状态提示', function () {
         ->assertSee(__('sn-cms::cms.frontend.home_empty'), false);
 });
 
-it('is_home 节点绑定编排后首页按编排渲染块头', function () {
+it('is_home 节点经 Page 绑定编排后首页按编排渲染块头', function () {
     createComposition(['title' => '首页编排', 'components' => singleRowComponents('今日头条', '编辑精选内容')]);
-    createContentNav('首页', ['options' => ['is_home' => true, 'composition_id' => Composition::first()->id]]);
+    $page = createBoundPage('首页内容', Composition::first()->id);
+    createPageNav('首页', ['options' => ['is_home' => true]], $page->id);
 
     $this->get('/cms')
         ->assertOk()
@@ -431,7 +450,8 @@ it('条目关闭 show_header 后首页不渲染块头（标题仅在后台使用
         ],
     ];
     createComposition(['title' => '首页编排', 'components' => $rows]);
-    createContentNav('首页', ['options' => ['is_home' => true, 'composition_id' => Composition::first()->id]]);
+    $page = createBoundPage('首页内容', Composition::first()->id);
+    createPageNav('首页', ['options' => ['is_home' => true]], $page->id);
 
     $this->get('/cms')
         ->assertOk()
@@ -440,82 +460,76 @@ it('条目关闭 show_header 后首页不渲染块头（标题仅在后台使用
         ->assertDontSee(__('sn-cms::cms.frontend.home_empty'), false);
 });
 
-it('is_home 节点绑定的编排为草稿或缺失时回退空状态', function () {
+it('is_home 节点绑定的 Page 为草稿或编排失效时回退空状态', function () {
+    // Page 绑定草稿编排：resolveRows 回退空，页面无自有内容 → 渲染页面空态（page-content 组件文案）
     $draft = createComposition(['status' => CompositionStatus::Draft, 'components' => singleRowComponents()]);
-    createContentNav('首页', ['options' => ['is_home' => true, 'composition_id' => $draft->id]]);
+    $page = createBoundPage('草稿首页', $draft->id);
+    createPageNav('首页', ['options' => ['is_home' => true]], $page->id);
 
-    $this->get('/cms')->assertOk()->assertSee(__('sn-cms::cms.frontend.home_empty'), false);
+    $this->get('/cms')->assertOk()->assertSee(__('sn-support::page.frontend.empty'), false);
 
-    // 编排不存在（引用失效）
-    createContentNav('首页失效', ['slug' => 'home-broken', 'options' => ['is_home' => true, 'composition_id' => 99999]]);
+    // Page 为草稿（首页链路第二环失效）→ 外层首页空态
+    $draftPage = createBoundPage('草稿页面', createComposition(['components' => singleRowComponents()])->id, ['status' => PageStatus::Draft]);
+    createPageNav('首页失效', ['options' => ['is_home' => true]], $draftPage->id);
     $this->get('/cms')->assertOk()->assertSee(__('sn-cms::cms.frontend.home_empty'), false);
 });
 
 it('is_home 节点入口指向模块首页地址', function () {
-    $nav = createContentNav('首页', ['options' => ['is_home' => true]]);
+    $nav = createPageNav('首页', ['options' => ['is_home' => true]]);
 
     expect($nav->url_info['url'])->toBe(Utils::route('index'));
 });
 
-it('普通内容节点入口仍指向导航详情页', function () {
-    $nav = createContentNav('关于我们', ['options' => ['composition_id' => 1]]);
+it('Page 型节点入口指向页面规范地址，未绑定页面为空链接', function () {
+    $composition = createComposition(['components' => singleRowComponents('页面块头')]);
+    $page = createBoundPage('关于我们页', $composition->id);
+    $nav = createPageNav('关于我们', [], $page->id);
 
-    expect($nav->url_info['url'])->toBe(Utils::route('navigation.show', $nav));
+    expect($nav->url_info['url'])->toBe(Utils::route('pages.show', $page->slug));
+
+    // 未绑定 page_id（配置未完成）
+    $unbound = createPageNav('未完成节点');
+    expect($unbound->url_info['url'])->toBe('#');
 });
 
 it('is_home 标记在同 scope 内互斥', function () {
-    $first = createContentNav('首页一', ['options' => ['is_home' => true]]);
-    $second = createContentNav('首页二', ['slug' => 'home-2', 'options' => ['is_home' => true]]);
+    $first = createPageNav('首页一', ['options' => ['is_home' => true]]);
+    $second = createPageNav('首页二', ['options' => ['is_home' => true]]);
 
     expect($first->refresh()->options['is_home'])->toBeFalse()
         ->and($second->refresh()->options['is_home'])->toBeTrue();
 });
 
 it('is_home 标记互斥限定在同一 scope 内', function () {
-    $footerNav = createContentNav('底部首页', ['scope_type' => 'sn-cms-footer', 'options' => ['is_home' => true]]);
+    $footerNav = createPageNav('底部首页', ['scope_type' => 'sn-cms-footer', 'options' => ['is_home' => true]]);
 
     // 主 scope 置位不影响 footer scope 的标记
-    createContentNav('主首页', ['slug' => 'home-main', 'options' => ['is_home' => true]]);
+    createPageNav('主首页', ['options' => ['is_home' => true]]);
 
     expect($footerNav->refresh()->options['is_home'])->toBeTrue();
 });
 
-it('is_home 节点无论提交何种类型，模型保存时强制为内容类型', function () {
+it('is_home 节点无论提交何种类型，模型保存时强制为页面类型', function () {
     // 模拟表单异常/绕过 UI 直接写入：类型兜底由模型 saving 钩子保证
-    $nav = createContentNav('兜底首页', ['slug' => 'home-guard', 'type' => 'url', 'options' => ['is_home' => true, 'url' => 'https://example.com']]);
+    $nav = createPageNav('兜底首页', ['type' => 'url', 'options' => ['is_home' => true, 'url' => 'https://example.com']]);
 
-    expect($nav->refresh()->type)->toBe(Wsmallnews\Cms\Enums\NavigationType::Content);
+    expect($nav->refresh()->type)->toBe(Wsmallnews\Cms\Enums\NavigationType::Page);
 });
 
-it('首页节点创建时自动生成唯一 slug，冲突自动追加序号消解', function () {
-    // ascii 名称保证 slug base 可预期（中文名走随机兜底，唯一性同理）
-    createContentNav('占位', ['slug' => 'test-home']);
+it('退位的旧首页节点失去首页地址，按绑定回到页面规范地址', function () {
+    $composition = createComposition(['components' => singleRowComponents()]);
+    $page = createBoundPage('旧首页内容', $composition->id);
+    $first = createPageNav('旧首页', ['options' => ['is_home' => true]], $page->id);
 
-    $home = createContentNav('自动首页', ['slug' => null, 'options' => ['is_home' => true]]);
-    expect($home->refresh()->slug)->not->toBeEmpty();
-
-    // 冲突消解：base 已被占用时追加 -2 序号
-    $model = new Navigation(['scope_type' => 'sn-cms', 'scope_id' => 0]);
-    expect($model->generateUniqueSlug('test-home'))->toBe('test-home-2');
-});
-
-it('退位的旧首页节点自动补齐 slug，修复失去首页后路由缺参数', function () {
-    $first = createContentNav('旧首页', ['slug' => null, 'options' => ['is_home' => true]]);
-
-    // 模拟历史脏数据：退位前 slug 被清空
-    $first->updateQuietly(['slug' => null]);
-
-    createContentNav('新首页', ['slug' => null, 'options' => ['is_home' => true]]);
+    createPageNav('新首页', ['options' => ['is_home' => true]], $page->id);
 
     $first->refresh();
     expect($first->options['is_home'])->toBeFalse()
-        ->and($first->slug)->not->toBeEmpty()
-        // 退位后入口回到导航详情页，URL 能正常生成（不再 Missing parameter: slug）
-        ->and($first->url_info['url'])->toBe(Utils::route('navigation.show', $first));
+        ->and($first->url_info['url'])->toBe(Utils::route('pages.show', $page->slug));
 });
 
 it('首页节点在后台树列表带首页标记，前台导航不带', function () {
-    $nav = createContentNav('标记入口', ['slug' => 'home-badge', 'options' => ['is_home' => true]]);
+    $nav = createPageNav('标记入口', ['options' => ['is_home' => true]]);
 
     // 前台语境（无当前面板）：name_label 不带标记
     expect($nav->name_label->toHtml())->not->toContain(__('sn-cms::cms.navigation_form.home_badge'));
@@ -534,27 +548,11 @@ it('首页节点在后台树列表带首页标记，前台导航不带', functio
 
 /*
 
- * 导航 content 节点引用编排渲染
+ * 导航 content 节点引用编排渲染（前台入口 /cms/navigation/{slug} 已随 Page 实体化下线，
+ * 编排渲染/空态的等价断言见 PageTest「页面路由渲染绑定编排的块头」等用例；
+ * 导航收敛 P2 落地后 Content 类型整体移除）
 
  */
-
-it('内容型导航页渲染引用编排的块头', function () {
-    createComposition(['components' => singleRowComponents('栏目头条', '栏目描述')]);
-    $nav = createContentNav('关于我们', ['options' => ['composition_id' => Composition::first()->id]]);
-
-    $this->get('/cms/navigation/'.$nav->slug)
-        ->assertOk()
-        ->assertSee('栏目头条')
-        ->assertSee('栏目描述');
-});
-
-it('内容型导航页引用失效时渲染空内容区不报错', function () {
-    $nav = createContentNav('空引用', ['options' => []]);
-
-    $this->get('/cms/navigation/'.$nav->slug)
-        ->assertOk()
-        ->assertDontSee('sn-content-text text-base font-semibold', false);
-});
 
 /**
  * 在编排资源配置上下文中执行回调。

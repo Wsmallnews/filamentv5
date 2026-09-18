@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('name')->nullable()->comment('名称');
             $table->string('description')->nullable()->comment('描述');
             $table->string('type')->nullable()->comment('类型');
-            $table->string('slug')->nullable()->comment('slug');
+            $table->unsignedBigInteger('page_id')->nullable()->comment('关联页面');
 
             $table->json('options')->nullable()->comment('选项');
             $table->string('status')->nullable()->comment('状态');
@@ -32,7 +32,7 @@ return new class extends Migration
             $table->index('team_id');
             $table->index(['scope_type', 'scope_id']);
             $table->index('type_id');
-            $table->index('slug');
+            $table->index('page_id');
         });
     }
 

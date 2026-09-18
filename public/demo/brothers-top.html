@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brothers Top 形态 Demo（复用主导航样式）</title>
+
+<!-- Tailwind Play CDN：工具类 + primary 色板取项目主题实际值（Amber oklch） -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        darkMode: 'class',
+        theme: { extend: { colors: { primary: {
+            50:  'oklch(0.987 0.022 95.277)',
+            100: 'oklch(0.962 0.059 95.617)',
+            200: 'oklch(0.924 0.12 95.746)',
+            300: 'oklch(0.879 0.169 91.605)',
+            400: 'oklch(0.828 0.189 84.429)',
+            500: 'oklch(0.769 0.188 70.08)',
+            600: 'oklch(0.666 0.179 58.318)',
+            700: 'oklch(0.555 0.163 48.998)',
+            800: 'oklch(0.473 0.137 46.201)',
+            900: 'oklch(0.414 0.112 45.904)',
+        } } } },
+    };
+</script>
+
+<!-- Alpine：手风琴展开交互（与主导航同款） -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+    body { font-family: ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    [x-cloak] { display: none !important; }
+
+    /* ===================================================================
+     * 以下为 cms 导航包样式的等价复刻（源：addons/cms/resources/css/index.css），
+     * 颜色值与线上一致（Amber 主题）；真实实现直接复用原类，不经此复刻
+     * =================================================================== */
+
+    .sn-primary-bg { background-color: oklch(0.769 0.188 70.08); }
+    .dark .sn-primary-bg { background-color: oklch(0.666 0.179 58.318); }
+
+    /* ---- 主行链接（primary 皮肤）：白字 / hover 提亮 400 / 选中深一档 600(暗 700) ---- */
+    .sn-cms-nav-link { color: #fff; }
+    .sn-cms-nav-link:hover { background-color: oklch(0.828 0.189 84.429); }
+    .sn-cms-nav-item.is-active > .sn-cms-nav-link,
+    .sn-cms-nav-item.is-active > .sn-cms-nav-link:hover { background-color: oklch(0.666 0.179 58.318); }
+    .dark .sn-cms-nav-item.is-active > .sn-cms-nav-link,
+    .dark .sn-cms-nav-item.is-active > .sn-cms-nav-link:hover { background-color: oklch(0.555 0.163 48.998); }
+
+    /* ---- 级联面板：主题色底、圆角阴影、显隐过渡（真实实现由 Alpine is-open 控制） ---- */
+    .sn-cms-sub {
+        position: absolute; z-index: 30; min-width: 11rem; padding: 0.25rem 0;
+        border-radius: 0.375rem;
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        background-color: oklch(0.769 0.188 70.08);
+        opacity: 0; visibility: hidden; transform: scale(0.98); pointer-events: none;
+        transition: opacity .15s ease-out, visibility .15s ease-out, transform .15s ease-out;
+    }
+    .dark .sn-cms-sub { background-color: oklch(0.666 0.179 58.318); }
+    .sn-cms-sub.depth-1 { top: 100%; left: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+    .sn-cms-sub.depth-n { top: -5px; left: calc(100% - 5px); }
+
+    .sn-cms-sub-link { color: #fff; }
+    .sn-cms-sub-link:hover { background-color: oklch(0.828 0.189 84.429); }
+    .sn-cms-sub-item.is-active > .sn-cms-sub-link,
+    .sn-cms-sub-item.is-active > .sn-cms-sub-link:hover { background-color: oklch(0.666 0.179 58.318); }
+    .dark .sn-cms-sub-item.is-active > .sn-cms-sub-link,
+    .dark .sn-cms-sub-item.is-active > .sn-cms-sub-link:hover { background-color: oklch(0.555 0.163 48.998); }
+
+    /* ---- 箭头：尺寸 + 旋转过渡；子级箭头默认向右（-90°） ---- */
+    .sn-cms-chev { width: 1.25rem; height: 1.25rem; flex: none; transition: transform .2s; }
+    .sn-cms-sub-item.has-sub > .sn-cms-sub-link .sn-cms-chev { transform: rotate(-90deg); }
+
+    /* ---- demo 专用：hover 展开级联（真实实现走 Alpine is-open，视觉/过渡相同） ---- */
+    .demo-nav .has-sub:hover > .sn-cms-sub,
+    .demo-nav .has-sub:focus-within > .sn-cms-sub { opacity: 1; visibility: visible; transform: scale(1); pointer-events: auto; }
+    .demo-nav .has-sub:hover > .sn-cms-nav-link .sn-cms-chev,
+    .demo-nav .has-sub:focus-within > .sn-cms-nav-link .sn-cms-chev { transform: rotate(180deg); }
+    .demo-nav .sn-cms-sub-item.has-sub:hover > .sn-cms-sub-link .sn-cms-chev,
+    .demo-nav .sn-cms-sub-item.has-sub:focus-within > .sn-cms-sub-link .sn-cms-chev { transform: rotate(0deg); }
+
+    /* ---- 手风琴（手机端 / 主导航手机面板同款）：primary 底白字，hover 400，选中深一档 ---- */
+    .sn-cms-acc-row { color: #fff; }
+    .sn-cms-acc-row:hover { background-color: oklch(0.828 0.189 84.429); }
+    .sn-cms-acc-item.is-active > .sn-cms-acc-row,
+    .sn-cms-acc-item.is-active > .sn-cms-acc-row:hover { background-color: oklch(0.666 0.179 58.318); }
+    .sn-cms-acc-leaf { color: rgb(255 255 255 / 0.9); }
+    .sn-cms-acc-leaf:hover { background-color: oklch(0.828 0.189 84.429); color: #fff; }
+    .sn-cms-acc-item.is-active > .sn-cms-acc-leaf,
+    .sn-cms-acc-item.is-active > .sn-cms-acc-leaf:hover { background-color: oklch(0.666 0.179 58.318); color: #fff; }
+    .dark .sn-cms-acc-item.is-active > .sn-cms-acc-row,
+    .dark .sn-cms-acc-item.is-active > .sn-cms-acc-row:hover,
+    .dark .sn-cms-acc-item.is-active > .sn-cms-acc-leaf,
+    .dark .sn-cms-acc-item.is-active > .sn-cms-acc-leaf:hover { background-color: oklch(0.555 0.163 48.998); }
+
+    /* ---- minimal 皮肤：白底黑字，hover/选中转主题色，下拉白底描边 ---- */
+    .sn-cms-nav-minimal .sn-cms-nav-link { color: #111827; }
+    .dark .sn-cms-nav-minimal .sn-cms-nav-link { color: #f3f4f6; }
+    .sn-cms-nav-minimal .sn-cms-nav-link:hover { background-color: #f3f4f6; color: oklch(0.666 0.179 58.318); }
+    .dark .sn-cms-nav-minimal .sn-cms-nav-link:hover { background-color: #1f2937; color: oklch(0.828 0.189 84.429); }
+    .sn-cms-nav-minimal .sn-cms-nav-item.is-active > .sn-cms-nav-link,
+    .sn-cms-nav-minimal .sn-cms-nav-item.is-active > .sn-cms-nav-link:hover {
+        background-color: oklch(0.962 0.059 95.617); color: oklch(0.555 0.163 48.998);
+    }
+    .dark .sn-cms-nav-minimal .sn-cms-nav-item.is-active > .sn-cms-nav-link,
+    .dark .sn-cms-nav-minimal .sn-cms-nav-item.is-active > .sn-cms-nav-link:hover {
+        background-color: rgb(0.769 0.188 70.08 / 0.15); color: oklch(0.879 0.169 91.605);
+    }
+    .sn-cms-nav-minimal .sn-cms-sub { background-color: #fff; border: 1px solid #e5e7eb; }
+    .dark .sn-cms-nav-minimal .sn-cms-sub { background-color: #111827; border-color: #374151; }
+    .sn-cms-nav-minimal .sn-cms-sub.depth-1 { border-radius: 0.375rem; }
+</style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-700 dark:text-gray-200">
+
+<div class="max-w-4xl mx-auto px-4 py-10 flex flex-col gap-12">
+
+    <header class="flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-4">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Brothers「内容上方」形态 · 复用主导航样式</h1>
+            <button onclick="document.documentElement.classList.toggle('dark')"
+                class="shrink-0 inline-flex items-center justify-center size-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer" title="切换暗黑">
+                <svg class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+            </button>
+        </div>
+        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            每个兄弟节点 = 一个独立的导航按钮（主导航一级项同款皮肤）；有子级时 hover 弹出级联下拉（与主导航下拉同款）。
+            「公司简介」为当前页面（激活态）；hover「专题推荐」看多级下拉（子分类 B 还有三级）。颜色为项目主题实际值（Amber）。
+        </p>
+    </header>
+
+    <!-- ============ PC · primary 皮肤（默认） ============ -->
+    <section class="flex flex-col gap-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">PC · primary 皮肤（主题色面板）</h2>
+
+        <nav class="demo-nav sn-cms-nav flex flex-wrap items-center gap-2" role="menu">
+            <!-- 激活按钮（当前页面） -->
+            <div class="sn-cms-nav-item is-active flex">
+                <a class="sn-cms-nav-link sn-primary-bg flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-semibold whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                    公司简介
+                </a>
+            </div>
+
+            <!-- 有子级：独立按钮 + 级联下拉 -->
+            <div class="sn-cms-nav-item has-sub relative flex">
+                <a class="sn-cms-nav-link sn-primary-bg flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-semibold whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;" aria-haspopup="true">
+                    专题推荐
+                    <svg class="sn-cms-chev" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                </a>
+                <ul class="sn-cms-sub depth-1" role="menu">
+                    <li class="sn-cms-sub-item relative" role="none">
+                        <a class="sn-cms-sub-link flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                            <span class="min-w-0 truncate">子分类 A</span>
+                        </a>
+                    </li>
+                    <li class="sn-cms-sub-item has-sub relative" role="none">
+                        <a class="sn-cms-sub-link flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;" aria-haspopup="true">
+                            <span class="min-w-0 truncate">子分类 B</span>
+                            <svg class="sn-cms-chev" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                        </a>
+                        <!-- 深层向右弹（与主导航 depth-n 同款） -->
+                        <ul class="sn-cms-sub depth-n" role="menu">
+                            <li class="sn-cms-sub-item is-active relative" role="none">
+                                <a class="sn-cms-sub-link flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                                    <span class="min-w-0 truncate">子分类 B-1（当前）</span>
+                                </a>
+                            </li>
+                            <li class="sn-cms-sub-item relative" role="none">
+                                <a class="sn-cms-sub-link flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                                    <span class="min-w-0 truncate">子分类 B-2</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 普通按钮 -->
+            <div class="sn-cms-nav-item flex">
+                <a class="sn-cms-nav-link sn-primary-bg flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-semibold whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                    联系我们
+                </a>
+            </div>
+            <div class="sn-cms-nav-item flex">
+                <a class="sn-cms-nav-link sn-primary-bg flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-semibold whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                    加入我们
+                </a>
+            </div>
+        </nav>
+
+        <div class="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm p-8 text-sm text-gray-400">
+            页面内容区（示意）——按钮排贴在内容上方，与内容同宽对齐（sn-page-x）
+        </div>
+    </section>
+
+    <!-- ============ PC · minimal 皮肤 ============ -->
+    <section class="flex flex-col gap-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">PC · minimal 皮肤（白底简约）</h2>
+
+        <nav class="demo-nav sn-cms-nav sn-cms-nav-minimal flex flex-wrap items-center gap-2" role="menu">
+            <div class="sn-cms-nav-item is-active flex">
+                <a class="sn-cms-nav-link flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-semibold whitespace-nowrap cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" role="menuitem" href="javascript:;">
+                    公司简介
+                </a>
+            </div>
+            <div class="sn-cms-nav-item has-sub relative flex">
+                <a class="sn-cms-nav-link flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-semibold whitespace-nowrap cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" role="menuitem" href="javascript:;" aria-haspopup="true">
+                    专题推荐
+                    <svg class="sn-cms-chev" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                </a>
+                <ul class="sn-cms-sub depth-1" role="menu">
+                    <li class="sn-cms-sub-item relative" role="none">
+                        <a class="sn-cms-sub-link flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                            <span class="min-w-0 truncate">子分类 A</span>
+                        </a>
+                    </li>
+                    <li class="sn-cms-sub-item relative" role="none">
+                        <a class="sn-cms-sub-link flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm font-medium whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                            <span class="min-w-0 truncate">子分类 B</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="sn-cms-nav-item flex">
+                <a class="sn-cms-nav-link flex items-center gap-1.5 px-4 py-2.5 rounded-md text-sm font-semibold whitespace-nowrap cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" role="menuitem" href="javascript:;">
+                    联系我们
+                </a>
+            </div>
+        </nav>
+
+        <p class="text-xs text-gray-400">minimal 皮肤：默认黑字，hover/选中转主题色（主导航 minimal 同款），下拉白底描边。</p>
+    </section>
+
+    <!-- ============ 手机端（主导航手机手风琴样式） ============ -->
+    <section class="flex flex-col gap-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">手机端 · 主导航手风琴样式</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 -mt-2">窄屏（&lt; lg）不再排按钮，直接渲染主导航手机端的手风琴列表（primary 面板、触控尺寸、缩进块、点击展开、当前项激活）。</p>
+
+        <!-- 手机屏示意框 -->
+        <div class="max-w-sm rounded-2xl border-4 border-gray-800 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-lg">
+            <div class="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">关于我们 · 分组</span>
+                <svg class="size-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+            </div>
+            <!-- 手风琴面板：primary 底（与主导航手机面板一致） -->
+            <div class="sn-primary-bg" x-data>
+                <ul class="sn-cms-acc flex flex-col py-1" role="menu">
+
+                    <!-- 叶子：当前页（激活） -->
+                    <li class="sn-cms-acc-item is-active">
+                        <a class="sn-cms-acc-leaf flex w-full items-center gap-1 px-4 py-3.5 text-sm font-normal whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                            <span class="truncate">公司简介</span>
+                        </a>
+                    </li>
+
+                    <!-- 父级：点击展开（Alpine，与主导航同交互） -->
+                    <li class="sn-cms-acc-item" x-data="{ isExpanded: false }">
+                        <a class="sn-cms-acc-row flex w-full items-center justify-between gap-2 px-4 py-3.5 text-sm font-semibold whitespace-nowrap cursor-pointer"
+                            href="javascript:;" role="menuitem" aria-haspopup="true" :aria-expanded="isExpanded ? 'true' : 'false'"
+                            @click="isExpanded = ! isExpanded">
+                            <span class="flex items-center gap-1 min-w-0">
+                                <span class="truncate">专题推荐</span>
+                            </span>
+                            <svg class="size-5 flex-none transition-transform duration-300" :class="isExpanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                        </a>
+                        <div x-cloak x-show="isExpanded" x-collapse>
+                            <ul class="sn-cms-acc flex flex-col" role="menu">
+                                <li class="sn-cms-acc-item">
+                                    <a class="sn-cms-acc-leaf flex w-full items-center gap-1 px-4 py-3.5 text-sm font-normal whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                                        <div class="w-5 flex-none"></div>
+                                        <span class="truncate">子分类 A</span>
+                                    </a>
+                                </li>
+                                <li class="sn-cms-acc-item">
+                                    <a class="sn-cms-acc-leaf flex w-full items-center gap-1 px-4 py-3.5 text-sm font-normal whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                                        <div class="w-5 flex-none"></div>
+                                        <span class="truncate">子分类 B</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <li class="sn-cms-acc-item">
+                        <a class="sn-cms-acc-leaf flex w-full items-center gap-1 px-4 py-3.5 text-sm font-normal whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                            <span class="truncate">联系我们</span>
+                        </a>
+                    </li>
+                    <li class="sn-cms-acc-item">
+                        <a class="sn-cms-acc-leaf flex w-full items-center gap-1 px-4 py-3.5 text-sm font-normal whitespace-nowrap cursor-pointer" role="menuitem" href="javascript:;">
+                            <span class="truncate">加入我们</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-sm text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-800 pt-6 leading-relaxed">
+        样式为 cms 导航包的等价复刻（颜色取项目主题实际值 Amber）；真实实现直接复用 sn-cms-* 原类名与 Alpine 交互，零新增视觉 token。
+        左侧手风琴（sidebar）形态维持原样式不变。
+    </footer>
+</div>
+
+</body>
+</html>

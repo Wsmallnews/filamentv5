@@ -70,57 +70,61 @@
 
 ## 10. Page 实体化与导航类型收敛
 
-### 背景与目标（最大的一项，独立规划）
+### 状态：P1 已完成（2026-09-17，含最终形态修订）
 
-现状"页面"概念分散在四处：
+**最终形态（经全站推演定稿，替代早期"薄路由壳"方案）**：
 
-1. 导航节点 content 类型（`options.composition_id` 引用编排）——"页面长在导航树上"
-2. 首页（导航 `options.is_home` 绑定）——首页语义藏在导航 options
-3. 固定路由页（`/cms/posts/{slug}`、profile、search 等）——与导航无模型关联
-4. 编排本身（可被导航引用，但独立存在）
+```
+Page（站点静态内容页实体，support）
+├── title / slug（scope 内唯一）/ status / order_column
+├── content（MorphOne → sn_contents）     ← 主体通道：富文本/Markdown 简单页面
+└── composition_id（nullable）           ← 高级模式：专题页/首页绑编排
 
-痛点：about-us 这类独立页面必须挂导航树才可路由；页面 URL 与导航结构耦合（挪导航 = 挪页面）；sitemap/SEO 对"页面"没有统一模型。
+导航节点（纯结构）──page_id──→ Page ──┬── content
+                                        └── composition
+```
 
-**目标模型**：`Page` 实体（slug 唯一、title、类型、内容绑定）成为页面的唯一事实源；`Navigation` 回归纯结构（指向 Page / 外链 / 锚点），不再承载页面语义。
+**三条边界（防退化）**：
+1. content 与 composition_id 应用层互斥（编排优先），不做双向转换魔法
+2. Composition 保持独立实体（purpose 侧栏需要），不是 Page 从属
+3. Page 不长 Post 的能力（无 publisher/评论/标签/调度/分类）
 
-### 方案设计
+**前端形态**：slug 寻址详情路由 `/cms/pages/{slug}`；无列表页无 feed（页面经导航/链接结构触达，WordPress 模型）；不提供 id 路由（避免双 URL SEO 分叉）。
 
-**P1：Page 实体与路由**
-- `sn_pages` 表：title/slug（scope 内唯一）/type（composition/uri/module-route）/composition_id 绑定/SEO 字段（title/description/og，替代部分站点设置）/status
-- 路由 `cms/pages/{slug}`：composition 型渲染编排；uri 型 302；module-route 型透传到模块路由
-- PageResource（五层结构，零代码注册风格）
+**已落地**（P1 + content 通道修订）：
+- sn_pages 迁移（六字段 + scope）、Page 模型（content/composition 双关联）、PageStatus
+- PageResource 五层（表单：互斥的编排选择器 + contentTypeGroup 内容组）
+- PageRenderer（findPage 预加载 content / resolvePage 编排通道）、cms 路由 + 渲染组件（三分支：编排/内容/空态）
+- 编排块 embedded 标志：块内组件让渡页面级 SEO（修真实 bug：块内文章组件曾覆盖页面标题）
+- 后台零代码注册（config panel_register）、PageTest 12 项
 
-**P2：导航引用迁移**
-- Navigation content 类型改为 `page_id` 引用（`options.composition_id` 兼容一个版本，渲染端双读）
-- 后台导航表单的编排选择器换成页面选择器（保留"直接选编排"快捷创建页面的路径）
-- 存量数据迁移命令（navigation content → 建 Page → 改引用）
+### P2：导航收敛（方案 C——Content 类型删除，只认 Page）
 
-**P3：语义收敛（依赖 8 的 purpose 验证）**
-- 首页 = `purpose='home'` 的 Page（is_home 从导航 options 移除，保留导航首页节点的展示语义）
+**原则**：无真实用户零兼容包袱（见 `.ai/rules/database.md`）——删字段直接改原始迁移（stub + 主仓库双侧），migrate:fresh 重建，不写数据迁移脚本，不做 301。
+
+改动清单：
+1. **NavigationTypeEnum 收敛**：删除 `Content` 类型；`Page` 类型语义改为 page_id 引用（表单从 contentTypeGroup 换成 Page 选择器）
+2. **导航表瘦身**：删 `slug` 字段（寻址职责归 Page）、删 content 兼职通道相关代码（Navigation::content() 关联与表单 contentTypeGroup）
+3. **导航表结构**：`navigations` 加 `page_id`（nullable，index）；原始迁移直接改，不叠增量
+4. **路由下线**：删 `/cms/navigation/{slug}` 路由与渲染入口（Navigation Livewire 组件），存量外链直接断
+5. **is_home 迁移**：`options.is_home` → Page 加 `is_home` 布尔（或首页 = is_home 的 Page，P3 与 purpose 商定）；Index 组件改查 Page
+6. **演示数据重 seed**：关于我们等页面重建为 Page（content 型），首页绑编排的 Page
+
+### P3：语义收敛（依赖 8 的 purpose 验证）
+
 - sitemap/SEO 生成以 Page 为源（与 SeoMeta 整合）
-- `/cms/navigation/{slug}` 旧路由 301 到 `/cms/pages/{slug}`
-
-### 改动清单（概览）
-
-| 层 | 内容 |
-| --- | --- |
-| support | Page 模型/迁移/资源骨架（可复用 Composition 的五层范本） |
-| cms | pages 路由与渲染页、导航表单 page 选择器、is_home 迁移、301、sitemap 整合、存量迁移命令 |
-| 主仓库 | config、演示数据、大版本测试 |
+- Page 侧栏属性（sidebar_purpose / sidebar_position）在 purpose 机制落地时追加
+- shop 落地页/品牌页 = Page（scope=sn-shop）+ sn-shop 模块注册的组件编排
 
 ### 风险与决策点
 
-- **引用方向**：Page 持有 composition_id（推荐，简单）vs composition 挂 page 反向（灵活但复杂）
-- **slug 命名空间**：与 posts/{slug} 共享 `/cms/` 前缀，pages 用独立段 `/cms/pages/{slug}` 无冲突，但需确认 URL 审美
-- **兼容成本**：P2 的双读期与 P3 的 301 是主要回归面；导航树后台的交互变化需要你试用后再定细节
-- **与 8 的关系**：purpose 侧栏先行验证"页面挂编排"的渲染体验，P3 再把首页迁入 Page 模型，降低一次性风险
-
-**预估**：P1 一轮会话、P2 一轮、P3 一轮（含迁移命令与真机验证），共 3 轮。**建议排在 8 之后**。
+- 导航树后台交互变化（Page 选择器替代编排选择器 + contentTypeGroup）需真机试用后定细节
+- is_home 的最终载体（Page 布尔字段 vs purpose='home' 查询）在 P2 时与 8 的机制统一考虑
 
 ---
 
 ## 建议执行顺序
 
-1. **8（purpose 侧栏）**：独立、收益直接、复用 B 期机制，先做
-2. **10（Page 实体化）**：分 P1-P3 渐进，每步可停
+1. **10-P2（导航收敛）**：Page 实体已就位（P1 完成），导航收敛是下一个闭环
+2. **8（purpose 侧栏）**：独立、收益直接、复用 B 期机制；其 purpose 概念与 10-P3 的 is_home/侧栏统一设计
 3. **9（事件）**：不立项，草案已入规则
