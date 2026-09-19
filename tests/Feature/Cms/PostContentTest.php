@@ -21,10 +21,6 @@ beforeEach(function () {
 
     Storage::fake();
 
-    // post 表单的分类树选择（select-tree）查询 sn_categories，测试库需补建 category 包的表（迁移未发布到应用目录）
-    foreach (glob(base_path('addons/category/database/migrations/*.php.stub')) ?: [] as $migrationFile) {
-        (require $migrationFile)->up();
-    }
 });
 
 it('post 表单的类型切换包含全部内容类型', function () {

@@ -123,6 +123,52 @@ it('后台创建页面：保存表单并自动写入 scopeable', function () {
     ]);
 });
 
+it('后台创建页面：同 scope 重复 slug 被拦截（软删除行不占位）', function () {
+    $this->actingAs(User::factory()->create(), 'admin');
+
+    // 存活的同 slug 行 + 软删除的同 slug 行：前者拦截、后者不占位
+    createPage(['slug' => 'dup-slug']);
+    createPage(['slug' => 'dup-slug', 'title' => '已删除页'])->delete();
+
+    withPagesPanelContext(fn () => livewire(CreatePage::class)
+        ->fillForm(['title' => '重复页', 'slug' => 'dup-slug'])
+        ->call('create')
+        // scopedUnique 为 Closure 规则，错误 bag 不带 unique 规则名，只断字段级错误
+        ->assertHasFormErrors(['slug']));
+
+    expect(Page::where('slug', 'dup-slug')->count())->toBe(1);
+});
+
+it('后台创建页面：不同 scope 的相同 slug 不受影响', function () {
+    $this->actingAs(User::factory()->create(), 'admin');
+
+    // sn-shop scope 已有相同 slug，sn-cms scope 下创建不应被误拦
+    createPage(['slug' => 'cross-scope', 'scope_type' => 'sn-shop']);
+
+    withPagesPanelContext(fn () => livewire(CreatePage::class)
+        ->fillForm(['title' => '跨scope页', 'slug' => 'cross-scope'])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertRedirect());
+
+    assertDatabaseHas(Page::class, ['slug' => 'cross-scope', 'scope_type' => 'sn-cms']);
+    assertDatabaseHas(Page::class, ['slug' => 'cross-scope', 'scope_type' => 'sn-shop']);
+});
+
+it('后台编辑页面：保留自身 slug 不触发唯一校验', function () {
+    $this->actingAs(User::factory()->create(), 'admin');
+
+    $page = createPage(['slug' => 'keep-slug']);
+    createPage(['slug' => 'other-slug', 'title' => '另一页']);
+
+    withPagesPanelContext(fn () => livewire(EditPage::class, ['record' => $page->id])
+        ->fillForm(['title' => '改标题不改slug'])
+        ->call('save')
+        ->assertHasNoFormErrors());
+
+    assertDatabaseHas(Page::class, ['id' => $page->id, 'title' => '改标题不改slug', 'slug' => 'keep-slug']);
+});
+
 /*
 
  * Page 模型机制

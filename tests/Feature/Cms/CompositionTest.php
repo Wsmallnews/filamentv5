@@ -509,6 +509,30 @@ it('is_home 标记互斥限定在同一 scope 内', function () {
     expect($footerNav->refresh()->options['is_home'])->toBeTrue();
 });
 
+it('is_home 标记互斥限定在同一导航类型（type_id）内', function () {
+    // 同 scope 下第二棵导航树（不同 type_id）
+    $otherTypeId = NavigationType::create([
+        'name' => 'Other',
+        'level' => 0,
+        'status' => NavigationTypeStatus::Normal,
+        'scope_type' => 'sn-cms',
+        'scope_id' => 0,
+    ])->id;
+
+    $first = createPageNav('树一首页', ['options' => ['is_home' => true]]);
+
+    // 不同 type_id 置位首页，不清掉第一棵树的标记
+    $second = createPageNav('树二首页', ['type_id' => $otherTypeId, 'options' => ['is_home' => true]]);
+
+    expect($first->refresh()->options['is_home'])->toBeTrue()
+        ->and($second->refresh()->options['is_home'])->toBeTrue();
+
+    // 同 type_id 内仍然互斥
+    createPageNav('树二新首页', ['type_id' => $otherTypeId, 'options' => ['is_home' => true]]);
+
+    expect($second->refresh()->options['is_home'])->toBeFalse();
+});
+
 it('is_home 节点无论提交何种类型，模型保存时强制为页面类型', function () {
     // 模拟表单异常/绕过 UI 直接写入：类型兜底由模型 saving 钩子保证
     $nav = createPageNav('兜底首页', ['type' => 'url', 'options' => ['is_home' => true, 'url' => 'https://example.com']]);
@@ -590,6 +614,41 @@ it('后台内容编排列表与创建页可访问', function () {
     $this->get('/admin/compositions/create')->assertOk();
 });
 
+it('后台创建编排：purpose 槽位与位置保存成功，留空默认通用编排', function () {
+    $this->actingAs(User::factory()->create(), 'admin');
+
+    // 选槽位 + 位置（Registry 白名单来自 cms 模块注册）
+    withCompositionConfiguration(fn () => livewire(CreateComposition::class)
+        ->fillForm([
+            'title' => '侧栏槽位编排',
+            'status' => CompositionStatus::Published->value,
+            'purpose' => 'post-sidebar',
+            'options.position' => 'left',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors());
+
+    assertDatabaseHas(Composition::class, [
+        'title' => '侧栏槽位编排',
+        'purpose' => 'post-sidebar',
+        'options' => json_encode(['position' => 'left']),
+    ]);
+
+    // 留空 purpose = 通用展示编排（默认态）
+    withCompositionConfiguration(fn () => livewire(CreateComposition::class)
+        ->fillForm([
+            'title' => '通用编排表单创建',
+            'status' => CompositionStatus::Published->value,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors());
+
+    assertDatabaseHas(Composition::class, [
+        'title' => '通用编排表单创建',
+        'purpose' => null,
+    ]);
+});
+
 it('后台可创建内容编排并进入编辑页', function () {
     $this->actingAs(User::factory()->create(), 'admin');
 
@@ -605,9 +664,7 @@ it('后台可创建内容编排并进入编辑页', function () {
         'title' => '新建编排',
         'scope_type' => 'sn-cms',
     ]);
-
     $composition = Composition::where('title', '新建编排')->first();
-
     // 挂上组件行后再渲染编辑页：覆盖 extras 动态表单（注册表 forms 经 $livewire->data 读根状态）
     $composition->update(['components' => singleRowComponents('编辑回显', '行式数据')]);
 
@@ -631,4 +688,141 @@ it('编排 scope 隔离：其他范围的编排不进入列表', function () {
     withCompositionConfiguration(fn () => livewire(ListCompositions::class)
         ->assertCanSeeTableRecords(Composition::where('scope_id', 0)->get())
         ->assertCanNotSeeTableRecords(Composition::where('scope_id', 5)->get()));
+});
+
+/*
+
+ * purpose 槽位（resolveForPurpose）
+
+ */
+
+it('resolveForPurpose 命中已发布编排并解析组件行（默认右侧栏）', function () {
+    createComposition(['title' => '侧栏编排', 'purpose' => 'post-sidebar', 'components' => singleRowComponents('侧栏块')]);
+
+    $result = CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0);
+
+    expect($result)->not->toBeNull()
+        ->and($result['position'])->toBe('right')
+        ->and($result['rows'])->toHaveCount(1)
+        ->and($result['rows'][0]['left'][0]['component_name'])->toBe('test-composition-dummy')
+        ->and($result['rows'][0]['left'][0]['extras']['componentInfo']['label'])->toBe('侧栏块');
+});
+
+it('resolveForPurpose 读取编排 options.position，非法值回退 right', function () {
+    createComposition(['title' => '左侧栏', 'purpose' => 'post-sidebar', 'options' => ['position' => 'left'], 'components' => singleRowComponents('左块')]);
+    expect(CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0)['position'])->toBe('left');
+
+    // 命中取 order_column 最前（desc），给非法位置的编排更高序号使其胜出
+    createComposition(['title' => '非法位置', 'purpose' => 'post-sidebar', 'order_column' => 99, 'options' => ['position' => 'center'], 'components' => singleRowComponents('块')]);
+    expect(CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0)['position'])->toBe('right');
+});
+
+it('resolveForPurpose 命中但编排行解析为空时回退 null', function () {
+    createComposition(['title' => '空侧栏编排', 'purpose' => 'post-sidebar', 'components' => []]);
+
+    expect(CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0))->toBeNull();
+});
+
+it('resolveForPurpose 未命中回退 null（无编排/通用编排/草稿/他 scope）', function () {
+    // 无任何编排
+    expect(CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0))->toBeNull();
+
+    // 通用展示编排（purpose=null）不参与 purpose 匹配
+    createComposition(['title' => '通用编排']);
+
+    // 草稿不参与
+    createComposition(['title' => '草稿侧栏', 'purpose' => 'post-sidebar', 'status' => CompositionStatus::Draft, 'components' => singleRowComponents('草稿侧栏块')]);
+
+    // 他 scope 的同 purpose 编排不命中
+    createComposition(['title' => '他scope侧栏', 'purpose' => 'post-sidebar', 'scope_type' => 'sn-shop']);
+
+    expect(CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0))->toBeNull();
+
+    // 发布本 scope 草稿后命中
+    Composition::where('title', '草稿侧栏')->update(['status' => CompositionStatus::Published->value]);
+    expect(CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0))->not->toBeNull();
+});
+
+it('resolveForPurpose 多条命中取 order_column 最大（与后台列表同序）', function () {
+    createComposition(['title' => '旧侧栏', 'purpose' => 'post-sidebar', 'order_column' => 1, 'components' => singleRowComponents('旧块')]);
+    createComposition(['title' => '新侧栏', 'purpose' => 'post-sidebar', 'order_column' => 2, 'components' => singleRowComponents('新块')]);
+
+    $result = CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0);
+
+    expect($result['rows'][0]['left'][0]['extras']['componentInfo']['label'])->toBe('新块');
+});
+
+it('resolveForPurpose 经槽位 context 提供者注入页面级上下文（null 未命中剔除）', function () {
+    CompositionRegistry::register('sn-cms', [
+        'type' => 'ctx-block',
+        'label' => '上下文块',
+        'context' => ['post'],
+        'components' => ['test-composition-dummy' => []],
+    ]);
+
+    createComposition(['title' => '上下文侧栏', 'purpose' => 'post-sidebar', 'components' => [
+        ['layout' => 'full', 'left' => [['type' => 'ctx-block', 'label' => '上下文块', 'description' => null, 'extras' => []]], 'right' => []],
+    ]]);
+
+    // 覆盖槽位 meta 的 context 提供者：params/scopeable 均可注入，null 值剔除
+    CompositionRegistry::registerPurposes('sn-cms', [
+        'post-sidebar' => [
+            'label' => '上下文侧栏',
+            'positions' => ['left', 'right'],
+            'context' => fn (array $params, array $scopeable): array => [
+                // params 与 scopeable 拼接进同一消费键，同时验证两个注入
+                'post' => ($params['slug'] ?? '').'@'.$scopeable['scope_type'],
+                'missing' => null,
+            ],
+        ],
+    ]);
+
+    $result = CompositionRenderer::resolveForPurpose('post-sidebar', 'sn-cms', 'sn-cms', 0, ['slug' => 'post-token']);
+
+    expect($result)->not->toBeNull()
+        ->and($result['rows'][0]['left'][0]['extras']['post'])->toBe('post-token@sn-cms')
+        // null 上下文未注入（键不存在，消费者 extras 显式配置优先逻辑不受影响）
+        ->and(array_key_exists('missing', $result['rows'][0]['left'][0]['extras']))->toBeFalse();
+});
+
+it('purpose 槽位注册：meta 归一化 + 标签覆盖合并 + 模块隔离', function () {
+    // cms 已在 ServiceProvider 注册 post-sidebar（label 闭包形态，getPurpose 消费时求值）
+    $meta = CompositionRegistry::getPurpose('sn-cms', 'post-sidebar');
+    expect($meta)->not->toBeNull()
+        ->and($meta['label'])->not->toBeEmpty()
+        // 标准位置 label 由 Registry 自动生成为翻译键闭包，getPurpose 消费时求值（无 boot 顺序竞态）
+        ->and($meta['positions'])->toBe(['left' => '左侧', 'right' => '右侧'])
+        ->and($meta['default'])->toBe('right')
+        ->and($meta['context'])->toBeInstanceOf(Closure::class);
+
+    // 字符串形态重复注册 = 仅覆盖标签（保留既有 positions/default/context）
+    CompositionRegistry::registerPurposes('sn-cms', ['post-sidebar' => '覆盖标签']);
+    expect(CompositionRegistry::getPurpose('sn-cms', 'post-sidebar')['label'])->toBe('覆盖标签')
+        ->and(CompositionRegistry::getPurpose('sn-cms', 'post-sidebar')['context'])->not->toBeNull();
+
+    // 数组形态扩充新槽位：混合位置形态（标准值 + 自定义 键=>标签），default 未声明取首个
+    CompositionRegistry::registerPurposes('sn-cms', [
+        'home-hero' => ['label' => '首页横幅', 'positions' => ['top', 'spotlight' => '聚光灯位'], 'default' => 'top'],
+    ]);
+    $hero = CompositionRegistry::getPurpose('sn-cms', 'home-hero');
+    expect($hero['positions'])->toBe(['top' => '顶部', 'spotlight' => '聚光灯位'])
+        ->and($hero['default'])->toBe('top')
+        // 未注册 purpose 的模块拿到空集（如纯 support 场景不会被 cms 语义污染）
+        ->and(CompositionRegistry::getPurposes('sn-shop')->isEmpty())->toBeTrue();
+});
+
+it('槽位编辑布局模式：左右堆叠、上下行式、meta 显式声明优先', function () {
+    // post-sidebar 未声明 layout_mode：按位置语义推导
+    expect(CompositionRegistry::getLayoutMode('sn-cms', 'post-sidebar', 'left'))->toBe(CompositionRenderer::LAYOUT_MODE_STACK)
+        ->and(CompositionRegistry::getLayoutMode('sn-cms', 'post-sidebar', 'right'))->toBe(CompositionRenderer::LAYOUT_MODE_STACK)
+        ->and(CompositionRegistry::getLayoutMode('sn-cms', 'post-sidebar', 'top'))->toBe(CompositionRenderer::LAYOUT_MODE_ROWS)
+        // 无槽位（通用编排）恒为行式
+        ->and(CompositionRegistry::getLayoutMode('sn-cms', null, 'left'))->toBe(CompositionRenderer::LAYOUT_MODE_ROWS)
+        ->and(CompositionRegistry::getLayoutMode('sn-cms', null, null))->toBe(CompositionRenderer::LAYOUT_MODE_ROWS);
+
+    // meta 显式声明 layout_mode 优先于位置推导（自定义位置的兜底手段）
+    CompositionRegistry::registerPurposes('sn-cms', [
+        'wide-hero' => ['label' => '宽幅位', 'positions' => ['top', 'bottom'], 'default' => 'top', 'layout_mode' => 'stack'],
+    ]);
+    expect(CompositionRegistry::getLayoutMode('sn-cms', 'wide-hero', 'top'))->toBe(CompositionRenderer::LAYOUT_MODE_STACK);
 });

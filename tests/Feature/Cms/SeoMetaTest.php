@@ -24,11 +24,6 @@ beforeEach(function () {
         'scope_id' => 0,
     ]);
 
-    // 列表页分类树查询 sn_categories，测试库需补建 category 包的表（迁移未发布到应用目录）
-    foreach (glob(base_path('addons/category/database/migrations/*.php.stub')) ?: [] as $migrationFile) {
-        (require $migrationFile)->up();
-    }
-
     // 列表页分类组件挂载时解析 CategoryType（scopeable），缺失会 404
     CategoryType::create([
         'name' => 'Post 分类',

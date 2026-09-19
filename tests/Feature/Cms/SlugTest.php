@@ -19,10 +19,6 @@ beforeEach(function () {
 
     Storage::fake();
 
-    // post 表单的分类树选择（select-tree）查询 sn_categories，测试库需补建 category 包的表（迁移未发布到应用目录）
-    foreach (glob(base_path('addons/category/database/migrations/*.php.stub')) ?: [] as $migrationFile) {
-        (require $migrationFile)->up();
-    }
 });
 
 it('超长标题自动生成的 slug 按词边界截断到 80 字符内', function () {

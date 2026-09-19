@@ -11,19 +11,6 @@ use function Pest\Livewire\livewire;
 
 uses(RefreshDatabase::class);
 
-// 分类表的迁移以 stub 形式存在（未发布到主应用），测试内直接执行
-beforeEach(function () {
-    foreach (['create_sn_category_types_table.php.stub', 'create_sn_categories_table.php.stub'] as $stub) {
-        $migration = require addons_path("category/database/migrations/{$stub}");
-        $migration->up();
-    }
-});
-
-function addons_path(string $path): string
-{
-    return base_path("addons/{$path}");
-}
-
 it('分类类型缺失时组件不报错且不查询分类表（短路返回空树）', function () {
     DB::enableQueryLog();
 

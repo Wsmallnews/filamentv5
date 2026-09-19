@@ -36,9 +36,9 @@
 
 ### 阶段拆分
 
-1. **C1 数据与查询**：迁移 + resolveForPurpose + 测试（纯 support 层）
-2. **C2 详情页布局**：cms 分栏改造 + pageContext 注入 + 无编排回退 + 浏览器验证（SEO 元数据回归）
-3. **C3 后台与默认组件**：purpose 表单/筛选 + 演示数据（post-sidebar 编排 + related-posts 复用）
+1. **C1 数据与查询**：迁移 + resolveForPurpose + 测试（纯 support 层）——✅ 已完成（2026-09-19：sn_compositions +purpose/索引双侧同步、CompositionRenderer::resolveForPurpose(purpose+module+scope, pageContext, 未命中 null)、CompositionTest +5 用例；**purpose 值域 = 模块注册制**（修订：原方案 B 的 support config 白名单已废弃——post-sidebar 是 cms 业务语义，support 不预置；改为 CompositionRegistry::registerPurposes($module, [值=>标签])，cms 在 ServiceProvider 注册，support 编排表单按模块读取，重复注册按键合并）。顺带：category 迁移执行版发布到主仓库并修复 5 个测试文件的 stub 手工引导、演示数据重建脚本 storage/rebuild-demo.php。命中规则：purpose 等值硬匹配 + published + 模块主 scope，多条命中取 order_column 最前（与后台列表同序），单条胜出不叠加
+2. **C2 详情页布局**：cms 分栏改造 + pageContext 注入 + 无编排回退 + 浏览器验证（SEO 元数据回归）——✅ 已完成（2026-09-19：路由页解析 $post 作 pageContext 种子、post.post 视图 sn-split 分栏（options.position 决定侧栏 DOM 左/右）、未命中/空编排/草稿回退全宽；PostSidebarTest 4 项（回退/命中+上下文注入/左位置 DOM 序/草稿不参与）；浏览器验证：右栏相关推荐自动关联当前文章（pageContext 零改动生效）、切左正常、SEO title/og:title 仍归文章、删编排回退全宽 1217px；演示数据含 post-sidebar 编排并入 storage/rebuild-demo.php）
+3. **C3 后台与默认组件**：purpose 表单/筛选 + 演示数据（post-sidebar 编排 + related-posts 复用）——✅ 已完成（2026-09-19：CompositionForm purpose 下拉（非必选、空=通用展示编排）+ 位置切换；purpose 列 + 筛选；PageForm 排除槽位专用编排；演示数据并入 storage/rebuild-demo.php）。**二轮定稿（同日）**：① 标签闭包化——label/位置标签接受 string|Closure，消费时 resolveLabel 求值（无 boot 顺序竞态），标准位置由 Registry 自动生成翻译键闭包，注册方零心智负担；② 槽位布局模式——meta 可声明 layout_mode（stack/rows），未声明按位置语义推导（左/右=堆叠、上/下=行式、无槽位=行式），表单堆叠模式隐藏分栏开关与右栏、按钮「添加侧栏块」、切位置经 syncRowsToLayoutMode 强制行通栏（残留数据保留可回退）；③ context 提供者——resolveForPurpose($params) 经槽位注册的 context 闭包映射路由参数为 pageContext（null 剔除），路由壳回薄壳。真机验证：堆叠/行式双向联动、500（itemLabel 缺 layout 键）防御修复
 
 ### 风险与决策点
 

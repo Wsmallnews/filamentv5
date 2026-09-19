@@ -6,31 +6,27 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
-        Schema::create('sn_compositions', function (Blueprint $table) {
-            $table->comment('内容编排');
+        Schema::create('sn_categories', function (Blueprint $table) {
+            $table->comment('分类');
             $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('team_id')->nullable()->comment('团队ID');
             $table->string('scope_type', 60)->nullable()->comment('范围类型');
             $table->unsignedBigInteger('scope_id')->default(0)->comment('范围');
-            $table->string('purpose', 60)->nullable()->comment('用途槽位（null = 通用展示编排；如 post-sidebar = 详情页侧栏）');
 
-            $table->string('title')->nullable()->comment('标题');
-            $table->json('components')->nullable()->comment('编排组件（行式布局：[{layout, left, right}]）');
+            $table->nestedSet();        // Nested Set fields for hierarchical structure
+            $table->unsignedBigInteger('type_id')->default(0)->comment('类别');
+            $table->string('name')->nullable()->comment('名称');
+            $table->string('description')->nullable()->comment('描述');
+
             $table->json('options')->nullable()->comment('选项');
             $table->string('status')->nullable()->comment('状态');
-            $table->unsignedInteger('order_column')->nullable()->comment('排序');
             $table->timestamps();
-            $table->softDeletes();
             $table->index('team_id');
             $table->index(['scope_type', 'scope_id']);
-            $table->index('purpose');
-            $table->index('order_column');
+            $table->index('type_id');
         });
     }
 
@@ -39,6 +35,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sn_compositions');
+        Schema::dropIfExists('sn_categories');
     }
 };

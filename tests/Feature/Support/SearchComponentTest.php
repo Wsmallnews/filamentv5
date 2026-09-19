@@ -13,10 +13,6 @@ beforeEach(function () {
     // 断言中文文案，切换应用语言
     app()->setLocale('zh_CN');
 
-    // cms 的 post 条目视图渲染分类标签，测试库需补建 category 包的表（迁移未发布到应用目录）
-    foreach (glob(base_path('addons/category/database/migrations/*.php.stub')) ?: [] as $migrationFile) {
-        (require $migrationFile)->up();
-    }
 });
 
 function createComponentPost(array $attributes = []): Post

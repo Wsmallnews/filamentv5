@@ -21,10 +21,6 @@ beforeEach(function () {
         'scope_id' => 0,
     ]);
 
-    // 搜索来源注册时 with('categories') 预加载分类标签，测试库需补建 category 包的表（迁移未发布到应用目录）
-    foreach (glob(base_path('addons/category/database/migrations/*.php.stub')) ?: [] as $migrationFile) {
-        (require $migrationFile)->up();
-    }
 });
 
 function createCmsSearchPost(array $attributes = []): Post
