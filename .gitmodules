@@ -28,3 +28,7 @@
 [submodule "addons/shop"]
 	path = addons/shop
 	url = git@github.com:Wsmallnews/shop.git
+[submodule "addons/order"]
+	path = addons/order
+	url = git@github.com:Wsmallnews/order.git
+	branch = v1
