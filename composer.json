@@ -23,6 +23,7 @@
         "wsmallnews/member": "v1.x-dev",
         "wsmallnews/preference": "v1.x-dev",
         "wsmallnews/product": "v1.x-dev",
+        "wsmallnews/shop": "v1.x-dev",
         "wsmallnews/support": "v1.x-dev",
         "wsmallnews/user": "v1.x-dev"
     },
@@ -135,6 +136,10 @@
         "product": {
             "type": "path",
             "url": "./addons/product"
+        },
+        "shop": {
+            "type": "path",
+            "url": "./addons/shop"
         },
         "support": {
             "type": "path",

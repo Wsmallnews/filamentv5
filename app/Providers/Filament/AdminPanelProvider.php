@@ -24,6 +24,7 @@ use Wsmallnews\Cms\CmsPlugin;
 use Wsmallnews\Comment\CommentPlugin;
 use Wsmallnews\Member\MemberPlugin;
 use Wsmallnews\Product\ProductPlugin;
+use Wsmallnews\Shop\ShopPlugin;
 use Wsmallnews\Support\Filament\Resources\ActivityLogs\ActivityLogResource;
 use Wsmallnews\Support\Filament\Resources\ScheduledTasks\ScheduledTaskResource;
 use Wsmallnews\Support\Support\Theme;
@@ -67,6 +68,7 @@ class AdminPanelProvider extends PanelProvider
                 CmsPlugin::make(),
                 MemberPlugin::make(),
                 ProductPlugin::make(),
+                ShopPlugin::make(),
                 UserPlugin::make(),
                 CommentPlugin::make(),
             ])
