@@ -6,6 +6,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | --- | --- |
 | addons/*/src/** | .ai/rules/addons-src.md |
 | addons/*/src/** | .ai/rules/composition.md |
+| addons/*/config/*.php | .ai/rules/config.md |
 | addons/*/resources/views/** | .ai/rules/container-queries.md |
 | addons/*/resources/css/** | .ai/rules/css.md |
 | addons/*/src/Filament/** | .ai/rules/filament.md |

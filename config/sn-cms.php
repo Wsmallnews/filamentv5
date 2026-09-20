@@ -16,11 +16,21 @@ use Wsmallnews\Support\Filament\Resources\Pages\PageResource;
 
 return [
     /**
-     * Default scopeable
+     * Scopeable 实例声明（单一事实源）
+     *
+     * main 为默认实例（必须存在）；未显式引用实例键的页面/资源均使用 main，
+     * 只有需要差异分区的实例（如底部导航 footer）才在此声明，并在 panel_register
+     * 条目中以 'scopeable' => 'footer' 显式引用。
      */
-    'scopeable' => [
-        'scope_type' => 'sn-cms',
-        'scope_id' => 0,
+    'scopeables' => [
+        'main' => [
+            'scope_type' => 'sn-cms',
+            'scope_id' => 0,
+        ],
+        'footer' => [
+            'scope_type' => 'sn-cms-footer',
+            'scope_id' => 0,
+        ],
     ],
 
     /**
@@ -65,30 +75,22 @@ return [
             NavigationTypeResource::class,
             LinkResource::class,
             PostResource::class,
-            // 零代码注册 support 的编排资源：数据隔离（scope_type/scope_id）+ 组件来源模块（module_id）
-            CompositionResource::class => [
-                'scope_type' => 'sn-cms',
-                'scope_id' => 0,
-                'module_id' => 'sn-cms',
-            ],
-            // 站点页面资源（Page 实体：slug → composition 绑定）
-            PageResource::class => [
-                'scope_type' => 'sn-cms',
-                'scope_id' => 0,
-            ],
+            // 零代码注册 support 的编排资源与站点页面资源：
+            // module_id 由注册插件自动注入（注册即归属），未声明 scopeable 即使用 main 实例
+            CompositionResource::class,
+            PageResource::class,
         ],
         'pages' => [
             PostCategoryPage::class => [
                 'key' => 'post-category',
                 'navigation_parent_item' => 'sn-cms::cms.post_resource.navigation_label',
-
-                // 需与 PostResource 的 scopeable 保持一致(PostResource 默认值为当前配置文件的 scopeable 配置)
-                'scope_type' => 'sn-cms',
-                'scope_id' => 0,
             ],
             GeneralSettingPage::class,
             NavigationPage::class,
-            FooterNavigationPage::class,
+            // 底部导航使用 footer 差异实例（scopeables.footer），与前台 Footer 组件共用
+            FooterNavigationPage::class => [
+                'scopeable' => 'footer',
+            ],
         ],
     ],
 

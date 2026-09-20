@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
+use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -12,6 +13,21 @@ use Wsmallnews\Product\Models\Product;
 use Wsmallnews\Support\Enums\ContentType;
 
 uses(RefreshDatabase::class);
+
+// 后台资源表单/表格经 config panel_register 注册：livewire() 直连不经生产环境的
+// IdentifyResourceConfiguration/IdentifyPageConfiguration 中间件，文件级显式进入
+// admin 面板 + 默认配置上下文；afterEach 复位，避免污染同进程的前端组件测试
+beforeEach(function () {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Filament::setCurrentPageConfigurationKey('default');
+    Filament::setCurrentResourceConfigurationKey('default');
+});
+
+afterEach(function () {
+    Filament::setCurrentPanel(null);
+    Filament::setCurrentPageConfigurationKey(null);
+    Filament::setCurrentResourceConfigurationKey(null);
+});
 
 use function Pest\Livewire\livewire;
 

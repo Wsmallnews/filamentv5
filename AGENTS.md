@@ -58,7 +58,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## Searching Documentation (IMPORTANT)
 
-- Always use `search-docs` before making code changes. Do not skip this step. It returns version-specific docs based on installed packages automatically.
+- Use `search-docs` before changes that depend on Laravel ecosystem APIs, behavior, configuration, or version-specific syntax. Skip it for copy-only edits and other changes where package documentation is irrelevant. Reuse sufficient results already in context instead of searching again.
 - Pass a `packages` array to scope results when you know which packages are relevant.
 - Use multiple broad, topic-based queries: `['rate limiting', 'routing rate limiting', 'routing']`. Expect the most relevant results first.
 - Do not add package names to queries because package info is already shared. Use `test resource table`, not `filament 4 test resource table`.
@@ -72,7 +72,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## Project Rules
 
-- This project keeps committed, area-grouped rules in `.ai/rules` (settled decisions, non-obvious traps, standing constraints). Framework and package guidelines that only apply to specific paths (testing, frontend, components) also live there, under `.ai/rules/boost` — this is not just recorded decisions, it is load-bearing guidance you have not seen inline. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule.
+- This project contains committed, area-grouped rules in `.ai/rules` when that directory exists (settled decisions, non-obvious traps, standing constraints). Framework and package guidelines that only apply to specific paths (testing, frontend, components) also live there, under `.ai/rules/boost` — this is not just recorded decisions, it is load-bearing guidance you have not seen inline. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule. If `.ai/rules` does not exist, continue without it.
 - Record durable rules with `record-rule` so the next agent or teammate inherits them instead of working them out again. Pass a `glob` (e.g. `app/Http/Controllers/**`), a short `title`, and a few-line `note`. Always use `record-rule`, never your native memory or notes tool — native memory is personal and session-scoped; only `.ai/rules` is shared with the team and persists in the repo.
 
 ## Artisan
@@ -115,8 +115,10 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 # Test Enforcement
 
-- Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
-- Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test --compact` with a specific filename or filter.
+- Test every code change by adding or updating a test.
+- Run the affected tests and ensure they pass.
+- Test the changed behavior and its important failure modes, but do not add tests beyond them.
+- Read the `testing-best-practices` skill before writing tests.
 
 === laravel/core rules ===
 
@@ -152,7 +154,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 # Livewire
 
-- Livewire allow to build dynamic, reactive interfaces in PHP without writing JavaScript.
+- Livewire allows you to build dynamic, reactive interfaces in PHP without writing JavaScript.
 - You can use Alpine.js for client-side interactions instead of JavaScript frameworks.
 - Keep state server-side so the UI reflects it. Validate and authorize in actions as you would in HTTP requests.
 
@@ -165,248 +167,19 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 === pest/core rules ===
 
-## Pest
+# Pest
 
-- This project uses Pest for testing. Create tests: `php artisan make:test --pest {name}`.
-- The `{name}` argument should not include the test suite directory. Use `php artisan make:test --pest SomeFeatureTest` instead of `php artisan make:test --pest Feature/SomeFeatureTest`.
-- Run tests: `php artisan test --compact` or filter: `php artisan test --compact --filter=testName`.
-- Do NOT delete tests without approval.
+- This project uses Pest. Create tests with `php artisan make:test --pest {name}`.
+- Do not include the test suite directory in `{name}`. Use `SomeFeatureTest`, not `Feature/SomeFeatureTest`.
+- Read the `testing-best-practices` skill for guidance on coverage, naming, structure, dependency isolation, and review.
+- Do not delete tests or test files without approval. They are part of the application.
 
-=== filament/filament/core rules ===
+## Running Tests
 
-## Filament
-
-- Filament is a Laravel UI framework built on Livewire, Alpine.js, and Tailwind CSS. UIs are defined in PHP via fluent, chainable components. Follow existing conventions in this app.
-- Use the `search-docs` tool for official documentation on Artisan commands, code examples, testing, relationships, and idiomatic practices. If `search-docs` is unavailable, refer to https://filamentphp.com/docs.
-
-### Artisan
-
-- Always use Filament-specific Artisan commands to create files. Find available commands with the `list-artisan-commands` tool, or run `php artisan --help`.
-- Inspect required options before running, and always pass `--no-interaction`.
-
-### Patterns
-
-Always use static `make()` methods to initialize components. Most configuration methods accept a `Closure` for dynamic values.
-
-Use `Get $get` to read other form field values for conditional logic:
-
-<code-snippet name="Conditional form field visibility" lang="php">
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Utilities\Get;
-
-Select::make('type')
-    ->options(CompanyType::class)
-    ->required()
-    ->live(),
-
-TextInput::make('company_name')
-    ->required()
-    ->visible(fn (Get $get): bool => $get('type') === 'business'),
-
-</code-snippet>
-
-Use `Set $set` inside `->afterStateUpdated()` on a `->live()` field to mutate another field reactively. Prefer `->live(onBlur: true)` on text inputs to avoid per-keystroke updates:
-
-<code-snippet name="Reactive field update" lang="php">
-use Filament\Schemas\Components\Utilities\Set;
-use Illuminate\Support\Str;
-
-TextInput::make('title')
-    ->required()
-    ->live(onBlur: true)
-    ->afterStateUpdated(fn (Set $set, ?string $state) => $set(
-        'slug',
-        Str::slug($state ?? ''),
-    )),
-
-TextInput::make('slug')
-    ->required(),
-
-</code-snippet>
-
-Compose layout by nesting `Section` and `Grid`. Children need explicit `->columnSpan()` or `->columnSpanFull()`:
-
-<code-snippet name="Section and Grid layout" lang="php">
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-
-Section::make('Details')
-    ->schema([
-        Grid::make(2)->schema([
-            TextInput::make('first_name')
-                ->columnSpan(1),
-            TextInput::make('last_name')
-                ->columnSpan(1),
-            TextInput::make('bio')
-                ->columnSpanFull(),
-        ]),
-    ]),
-
-</code-snippet>
-
-Use `Repeater` for inline `HasMany` management. `->relationship()` with no args binds to the relationship matching the field name:
-
-<code-snippet name="Repeater for HasMany" lang="php">
-use Filament\Forms\Components\Repeater;
-
-Repeater::make('qualifications')
-    ->relationship()
-    ->schema([
-        TextInput::make('institution')
-            ->required(),
-        TextInput::make('qualification')
-            ->required(),
-    ])
-    ->columns(2),
-
-</code-snippet>
-
-Use `state()` with a `Closure` to compute derived column values:
-
-<code-snippet name="Computed table column value" lang="php">
-use Filament\Tables\Columns\TextColumn;
-
-TextColumn::make('full_name')
-    ->state(fn (User $record): string => "{$record->first_name} {$record->last_name}"),
-
-</code-snippet>
-
-Use `SelectFilter` for enum or relationship filters, and `Filter` with a `->query()` closure for custom logic:
-
-<code-snippet name="Table filters" lang="php">
-use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
-
-SelectFilter::make('status')
-    ->options(UserStatus::class),
-
-SelectFilter::make('author')
-    ->relationship('author', 'name'),
-
-Filter::make('verified')
-    ->query(fn (Builder $query) => $query->whereNotNull('email_verified_at')),
-
-</code-snippet>
-
-Actions are buttons that encapsulate optional modal forms and behavior:
-
-<code-snippet name="Action with modal form" lang="php">
-use Filament\Actions\Action;
-
-Action::make('updateEmail')
-    ->schema([
-        TextInput::make('email')
-            ->email()
-            ->required(),
-    ])
-    ->action(fn (array $data, User $record) => $record->update($data)),
-
-</code-snippet>
-
-### Testing
-
-Testing setup (requires `pestphp/pest-plugin-livewire` in `composer.json`):
-
-- Always call `$this->actingAs(User::factory()->create())` before testing panel functionality.
-- For edit pages, pass `['record' => $user->id]`, use `->call('save')` (not `->call('create')`), and do not assert `->assertRedirect()` (edit pages do not redirect after save).
-
-<code-snippet name="Table test" lang="php">
-use function Pest\Livewire\livewire;
-
-livewire(ListUsers::class)
-    ->assertCanSeeTableRecords($users)
-    ->searchTable($users->first()->name)
-    ->assertCanSeeTableRecords($users->take(1))
-    ->assertCanNotSeeTableRecords($users->skip(1));
-
-</code-snippet>
-
-<code-snippet name="Create resource test" lang="php">
-use function Pest\Laravel\assertDatabaseHas;
-
-livewire(CreateUser::class)
-    ->fillForm([
-        'name' => 'Test',
-        'email' => 'test@example.com',
-    ])
-    ->call('create')
-    ->assertNotified()
-    ->assertHasNoFormErrors()
-    ->assertRedirect();
-
-assertDatabaseHas(User::class, [
-    'name' => 'Test',
-    'email' => 'test@example.com',
-]);
-
-</code-snippet>
-
-<code-snippet name="Edit resource test" lang="php">
-livewire(EditUser::class, ['record' => $user->id])
-    ->fillForm(['name' => 'Updated'])
-    ->call('save')
-    ->assertNotified()
-    ->assertHasNoFormErrors();
-
-assertDatabaseHas(User::class, [
-    'id' => $user->id,
-    'name' => 'Updated',
-]);
-
-</code-snippet>
-
-<code-snippet name="Testing validation" lang="php">
-livewire(CreateUser::class)
-    ->fillForm([
-        'name' => null,
-        'email' => 'invalid-email',
-    ])
-    ->call('create')
-    ->assertHasFormErrors([
-        'name' => 'required',
-        'email' => 'email',
-    ])
-    ->assertNotNotified();
-
-</code-snippet>
-
-Use `->callAction(DeleteAction::class)` for page actions, or `->callAction(TestAction::make('name')->table($record))` for table actions:
-
-<code-snippet name="Calling actions" lang="php">
-use Filament\Actions\Testing\TestAction;
-
-livewire(ListUsers::class)
-    ->callAction(TestAction::make('promote')->table($user), [
-        'role' => 'admin',
-    ])
-    ->assertNotified();
-
-</code-snippet>
-
-### Correct Namespaces
-
-- Form fields (`TextInput`, `Select`, `Repeater`, etc.): `Filament\Forms\Components\`
-- Infolist entries (`TextEntry`, `IconEntry`, etc.): `Filament\Infolists\Components\`
-- Layout components (`Grid`, `Section`, `Fieldset`, `Tabs`, `Wizard`, etc.): `Filament\Schemas\Components\`
-- Schema utilities (`Get`, `Set`, etc.): `Filament\Schemas\Components\Utilities\`
-- Table columns (`TextColumn`, `IconColumn`, etc.): `Filament\Tables\Columns\`
-- Table filters (`SelectFilter`, `Filter`, etc.): `Filament\Tables\Filters\`
-- Actions (`DeleteAction`, `CreateAction`, etc.): `Filament\Actions\`. Never use `Filament\Tables\Actions\`, `Filament\Forms\Actions\`, or any other sub-namespace for actions.
-- Icons: `Filament\Support\Icons\Heroicon` enum (e.g., `Heroicon::PencilSquare`)
-
-### Common Mistakes
-
-- **Never assume public file visibility.** File visibility is `private` by default. Always use `->visibility('public')` when public access is needed.
-- **Never assume full-width layout.** `Grid`, `Section`, `Fieldset`, and `Repeater` do not span all columns by default.
-- **Use `Select::make('author_id')->relationship('author', 'name')` for BelongsTo fields.** `BelongsToSelect` does not exist in v4.
-- **`Repeater` uses `->schema()`, not `->fields()`.**
-- **Never add `->dehydrated(false)` to fields that need to be saved.** It strips the value from form state before `->action()` or the save handler runs. Only use it for helper/UI-only fields.
-- **Use correct property types when overriding `Page`, `Resource`, and `Widget` properties.** These properties have union types or changed modifiers that must be preserved:
-  - `$navigationIcon`: `protected static string | BackedEnum | null` (not `?string`)
-  - `$navigationGroup`: `protected static string | UnitEnum | null` (not `?string`)
-  - `$view`: `protected string` (not `protected static string`) on `Page` and `Widget` classes
+- Run the narrowest set of tests that covers the change. Pass a file path or `--filter=testName` to `php artisan test --compact`.
+- Rerun a test after each change to it.
+- Run `vendor/bin/pest` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
+- After the feature tests pass, ask the user to run the complete suite with `php artisan test --compact`.
 
 === wsmallnews/category/core rules ===
 
@@ -1196,7 +969,7 @@ abstract class Base extends Page
 - `getCommentStatus()` → 仅从自定义属性读取
 - `getEmptyLabel()` / `getEmptyTipLabel()` → 优先从自定义属性，fallback 到 parent
 
-`getEssentialsPlugin()` 返回 `CommentPlugin::get()`。
+
 
 ### Livewire Concerns（Traits）
 
@@ -2196,7 +1969,7 @@ return $table
 
 **组件规范**：
 
-- status 一律 `FormComponents::statusToggleButtons(XxxStatus::class)`（= `ToggleButtons::make('status')->inline()->grouped()->options($enum)->default(枚举第一 case)`）；**禁止** Radio / Select 做状态字段。
+- status 及其他 enum 开关字段一律 `FormComponents::enumsToggleButtons(XxxEnum::class)`（= `ToggleButtons::make($field)->inline()->grouped()->options($enum)->default(枚举第一 case)`，label 默认「状态」）；**禁止** Radio / Select 做状态字段；非 status 语义的 enum（性别、类型等）在外层 `->label()` 覆盖。
 - order_column 一律 `FormComponents::orderColumnInput()`。
 - 两个工厂的 label 已内置通用翻译（「状态」「排序」）：**label 与默认一致时不要再 `->label()` 自定义，也不必新增语言包 key**；仅语义不同时（如「导航状态」）才覆盖。
 
@@ -2265,7 +2038,7 @@ Resources/Xxxs/
 
 **XxxResource（final）—— 注册与配置层，不定义默认值**：
 
-- 只做三件事：`getPages()` 路由绑定；use `CanBeConfigured` + `$configurationClass = ResourceConfiguration::class`（`form()` / `table()` 先查插件 customProperties 闭包，有则用调用方的，无则回落 parent）；`getEssentialsPlugin()` 返回本包插件实例。
+- 只做两件事：`getPages()` 路由绑定；use `CanBeConfigured` + `$configurationClass = ResourceConfiguration::class`（`form()` / `table()` 先查插件 customProperties 闭包，有则用调用方的，无则回落 parent）。module_id 由注册插件自动注入。
 
 **Pages —— 行为层**：
 
@@ -2331,10 +2104,7 @@ final class PostResource extends BaseResource
 
     protected static ?string $configurationClass = ResourceConfiguration::class;
 
-    public static function getEssentialsPlugin(): ?CmsPlugin
-    {
-        return CmsPlugin::get();
-    }
+
 }
 ```
 
@@ -2609,9 +2379,8 @@ use Wsmallnews\Support\Data\ScopeableContext;
 $context = new ScopeableContext('post', 0);
 $context->isGlobal(); // true (scopeId === 0)
 
-// 从数组或配置创建
+// 从数组创建
 ScopeableContext::fromArray(['scope_type' => 'store', 'scope_id' => 5]);
-ScopeableContext::fromConfig('sn-cms.scopeable');
 
 // 辅助函数
 scopeable_context(['scope_type' => 'post', 'scope_id' => 0]);
@@ -2894,11 +2663,11 @@ use Wsmallnews\Support\Facades\Search;
 
 // 模块名 = 插件 ID；模块是否启用由包的配置决定（未开启则不注册来源，前端也不渲染搜索框）
 if (Utils::getConfig('search.enabled', true)) {
-    Search::config(app(CmsPlugin::class)->getId(), [              // 模块选项：engine、page 等，增量合并
-        'engine' => Utils::getConfig('search.engine'),             // null 走全局兜底
-        // 搜索结果页地址（display = page 时回车跳转目标）：闭包接收搜索关键词，自行返回完整 URL
-        'page' => fn (?string $query) => Utils::route('search', ['q' => $query]),
-    ])->registers(app(CmsPlugin::class)->getId(), [
+    // 配置节整节透传（enabled 除外）：想覆盖 sn-support.search.* 的哪个键就写哪个
+    $searchConfig = collect(Utils::getConfig('search', []))->except('enabled')->all();
+    $searchConfig['page'] ??= fn (?string $query) => Utils::route('search', ['q' => $query]);   // 包内结果页兜底
+
+    Search::config(app(CmsPlugin::class)->getId(), $searchConfig)->registers(app(CmsPlugin::class)->getId(), [
             [
                 'key' => 'post',
                 'model' => Utils::getPostModel(),      // 支持 morph 别名
@@ -2923,13 +2692,16 @@ Search::search('sn-cms', '关键词');      // 仅指定模块；未知模块名
 ```
 
 - **来源选项**：`key`、`model`（必填）、`group`、`fields`（默认 `resolveKeywordSearchFields()` 并剔除含 `.` 的关联字段）、`limit`、`sort`、`query`（LIKE）、`scout`（Scout 索引过滤，此时 query/scopeable/fields 不生效）、`scopeable`、`title`/`description`/`cover`/`badge`（默认取 `HasSnSubject` 固定数据）、`url`（默认无链接，前端搜索永不产生 panel 地址）、`view`（自定义条目视图，接收 `$result`（含 `->record` 原始模型）、`$query`；高亮用 `text_highlight($text, $query)` 助手）、`render`（自定义条目渲染闭包 `fn ($result, $query)`，优先于 view）、`visible`、`results`（完全自定义结果，绕过引擎）。条目渲染 `render` 闭包优先，否则渲染 `view`（未声明时经 `SearchSource::itemView()` 兜底为默认统一模板，视图层无需判断）；外层链接包裹由 support 统一处理，自定义部分只负责条目内容区。
-- **模块选项（模块级）**：`Search::config($module, $config)` 统一声明（增量合并、同名键后声明覆盖、值为 null 的键恢复全局兜底；可链式、与注册顺序无关），后续新增选项扩展键名即可复用同一通道。已支持：
-  - `engine`：模块搜索引擎（`database` 默认 WHERE LIKE / `scout` 需 `Laravel\Scout\Searchable`，未安装抛 `SupportException` / 引擎类名），未声明走全局兜底 `config('sn-support.search.engine')`；
-  - `page`：搜索结果页地址（display = page 时回车跳转目标）。字符串由 support 统一拼接 `?q=关键词`；闭包 `fn (?string $query) => ...` 接收搜索关键词并自行返回完整 URL，未声明走全局兜底 `config('sn-support.search.page')`。
-- **启用开关（注册入口门控）**：模块是否启用由各扩展包在 `packageBooted()` 用配置自行判断——未开启则**不调用 config/registers**（来源不进注册表，前端也不渲染搜索框），如 cms 的 `if (Utils::getConfig('search.enabled', true)) { Search::config(...)->registers(...); }`，视图侧用同一配置判断是否渲染搜索框。cms 的配置节为 `sn-cms.search.enabled` / `sn-cms.search.engine` / `sn-cms.search.display`。
+- **模块选项（模块级）**：`Search::config($module, $config)` 统一声明（增量合并、同名键后声明覆盖、值为 null 的键恢复全局兜底；可链式、与注册顺序无关）。**`sn-support.search.*` 的任意键都可作为模块声明键**——support 新增配置键无需各包同步接线即天然可覆盖。扩展包推荐整节透传自己的配置节接入：`collect(Utils::getConfig('search'))->except('enabled')`（`enabled` 是各包自己的启用门控，不透传），键名与全局一致，想覆盖哪些就写哪些。解析统一走 `Search::resolveConfig($module, $key, $default)`（模块声明 > 全局 > 默认）。已消费的键：
+  - `engine`：模块搜索引擎（`database` 默认 WHERE LIKE / `scout` 需 `Laravel\Scout\Searchable`，未安装抛 `SupportException` / 引擎类名）；
+  - `page`：搜索结果页地址（display = page 时回车跳转目标）。字符串由 support 统一拼接 `?q=关键词`；闭包 `fn (?string $query) => ...` 接收搜索关键词并自行返回完整 URL。cms 等自带结果页路由的包经 `$config['page'] ??= 闭包` 兜底（模块显式声明优先）；
+  - `display` / `debounce` / `show_search_button`：前端搜索组件的展示方式、防抖时长、一体化搜索按钮（仅 display = page 生效，开启后按钮替代 ↵ Enter 提示；搜索结果页组件 `search-results` 同样读取该配置，不受 display 门控）。结果页搜索触发方式随该开关切换：显示按钮时输入框为 deferred 绑定（`wire:model`），按钮 `wire:click="search"` / 回车 `wire:keydown.enter="search"` 显式触发——Livewire 发请求时会自动合并 deferred 待定值且更新先于 action 应用，无需 form；无按钮时 `wire:model.live.debounce` 自动搜索、回车 `$refresh`。按钮为自定义 HTML（组件 `getSearchButtonHtml()` 返回 HtmlString，视图 `search-button.blade.php`，type 与 wire:click 由调用方传入），经 `x-filament::input.wrapper` 的 `suffix` 属性渲染，按钮模式下 `inline-suffix` 关闭——与输入框之间保留 wrapper 自带的竖向分割线；样式类 `.sn-search-submit` 定义于包 CSS（左侧直角贴分割线、右侧圆角随 wrapper），并用 `.fi-input-wrp-suffix:has(.sn-search-submit)` 让按钮占满整个 suffix 区（满高贴右），优先级均为：组件属性 > 模块声明 > 全局；
+  - `results_limit`：来源默认返回条数（调用方显式 limit > 来源声明 limit > 模块声明 > 全局）；
+  - `split_terms` / `terms_operator` / `case_insensitive`：拆词开关、多词组合方式（`'and'` 默认所有词都命中 / `'or'` 任一词命中即返回）、LIKE 大小写（database 引擎经 `ConfigurableEngine::setSearchConfig()` 接收模块声明，自定义引擎按需实现该接口）。
+- **启用开关（注册入口门控）**：模块是否启用由各扩展包在 `packageBooted()` 用配置自行判断——未开启则**不调用 config/registers**（来源不进注册表，前端也不渲染搜索框），如 cms 的 `if (Utils::getConfig('search.enabled', true)) { Search::config(...)->registers(...); }`，视图侧用同一配置判断是否渲染搜索框。cms 的配置节为 `sn-cms.search`：`enabled` 之外任意键整节透传（想覆盖 `sn-support.search.*` 的哪个键就写哪个，如 `display` / `terms_operator` / `show_search_button`）。
 - **项目启用 scout 的步骤**：① `composer require laravel/scout`；② 给模型 use `Searchable` —— 包内模型用子类替换：新建 `App\Models\Cms\Post extends \Wsmallnews\Cms\Models\Post`（use `Searchable`）并把 `config('sn-cms.models.post')` 指向它，业务代码全部经 `Utils::getPostModel()` 解析无需改动；③ 把 `config('sn-support.search.engine')` 设为 `'scout'`（注册时未显式指定引擎的来源全部切换）。Meilisearch/Algolia 等外部引擎需先 `scout:import` 建索引，collection/database 驱动无需。
 - **相同 key 重复注册视为覆盖**（应用可借此覆盖包内置来源）。
-- **前端组件**：`@livewire('sn-support::components.search', ['module' => app(CmsPlugin::class)->getId(),'placeholder' => '搜索…','limit' => 5])`（`module` 绑定模块，null 搜索所有已启用模块），视图 `sn-support::livewire.components.search`，配置在 `config/sn-support.php` 的 `search` 节（`engine`、`display`、`page`、`results_limit`、`split_terms`、`case_insensitive`、`debounce`）。`display` 控制展示方式：`dropdown`（输入即搜浮层，默认）/ `page`（回车跳转搜索结果页，地址取模块 `page` 选项或全局兜底），各扩展包可在自己配置节覆盖（如 `sn-cms.search.display`）；结果页内容区核心组件为 `@livewire('sn-support::components.search-results', ['module' => ...])`，页面路由由调用方定义。
+- **前端组件**：`@livewire('sn-support::components.search', ['module' => app(CmsPlugin::class)->getId(),'placeholder' => '搜索…','limit' => 5])`（`module` 绑定模块，null 搜索所有已启用模块），视图 `sn-support::livewire.components.search`，配置在 `config/sn-support.php` 的 `search` 节（`engine`、`display`、`page`、`results_limit`、`split_terms`、`terms_operator`、`show_search_button`、`case_insensitive`、`debounce`）。`display` 控制展示方式：`dropdown`（输入即搜浮层，默认）/ `page`（回车跳转搜索结果页，地址取模块 `page` 选项或全局兜底）；`display` / `debounce` / `show_search_button` 均为「组件属性 > 模块声明 > 全局」三级解析；`page` 模式可经 `show_search_button` 渲染一体化搜索按钮（自定义 HTML 经 wrapper `suffix` 渲染，样式 `.sn-search-submit`）；结果页内容区核心组件为 `@livewire('sn-support::components.search-results', ['module' => ...])`，同样读取 `show_search_button` 渲染按钮，页面路由由调用方定义。
 
 ### Utils 工具类
 
@@ -2944,7 +2716,7 @@ Search::search('sn-cms', '关键词');      // 仅指定模块；未知模块名
 | `getScheduledTaskModel()` | 获取 ScheduledTask 模型类名 |
 | `isTenancyEnabled()` | 判断多租户是否启用 |
 | `getFilesystemDisk()` | 获取文件系统磁盘（回退到 Filament 默认盘） |
-| `getScopeFromConfig('sn-cms.scopeable')` | 从配置创建 ScopeableContext |
+| `getScopeFromInstances('sn-cms.scopeables', 'footer')` | 从模块 scopeables 实例配置解析 ScopeableContext（第二参数缺省为 main） |
 | `getSchedulerConfig('key', $default)` | 读取定时调度配置 |
 
 ### 关键辅助函数
@@ -2970,7 +2742,7 @@ Search::search('sn-cms', '关键词');      // 仅指定模块；未知模块名
 | `tree_to_flatten($tree)` | 递归将树结构扁平化为一维集合 |
 | `sn_route($name, $params, $absolute)` | 租户感知路由，多租户启用时自动添加 tenant 参数 |
 | `remove_query_param_from_url($url, $keys)` | 移除 URL 中的指定 query 参数 |
-| `scopeable_context($input)` | 创建 ScopeableContext（支持数组、实例、配置 key） |
+| `scopeable_context($input)` | 创建 ScopeableContext（支持数组、ScopeableContext） |
 | `scopeable_query($query, $scope)` | 对查询应用 scope 过滤 |
 
 ### 正确命名空间速查

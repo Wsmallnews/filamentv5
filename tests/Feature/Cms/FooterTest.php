@@ -4,6 +4,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Wsmallnews\Cms\Enums\NavigationTypeStatus;
+use Wsmallnews\Cms\Exceptions\CmsException;
 use Wsmallnews\Cms\Models\Navigation;
 use Wsmallnews\Cms\Models\NavigationType;
 use Wsmallnews\Cms\Settings\GeneralSettings;
@@ -217,13 +218,17 @@ it('底部导航管理页面可访问且自动创建独立类型（level=2）', 
         ->and(NavigationType::where('scope_type', 'sn-cms')->count())->toBe(1);
 });
 
-it('底部导航 scope 为派生约定：模块 scope_type + -footer', function () {
-    expect(Utils::getFooterScopeType())->toBe('sn-cms-footer')
-        ->and(Utils::getFooterScopeable())->toBe(['scope_type' => 'sn-cms-footer', 'scope_id' => 0]);
+it('底部导航 scope 来自 config scopeables 声明的 footer 实例', function () {
+    expect(Utils::getScopeable('footer'))->toBe(['scope_type' => 'sn-cms-footer', 'scope_id' => 0])
+        ->and(Utils::getScopeable())->toBe(['scope_type' => 'sn-cms', 'scope_id' => 0]);
 
-    // 模块 scopeable 变化时，底部导航 scope 自动跟随
-    config(['sn-cms.scopeable' => ['scope_type' => 'news', 'scope_id' => 0]]);
+    // footer 是显式声明的实例，按声明解析（不再从主 scope 派生）
+    config(['sn-cms.scopeables.footer' => ['scope_type' => 'news-footer', 'scope_id' => 0]]);
 
-    expect(Utils::getFooterScopeType())->toBe('news-footer')
-        ->and(Utils::getFooterScopeable())->toBe(['scope_type' => 'news-footer', 'scope_id' => 0]);
+    expect(Utils::getScopeable('footer'))->toBe(['scope_type' => 'news-footer', 'scope_id' => 0])
+        ->and(Utils::getScopeable())->toBe(['scope_type' => 'sn-cms', 'scope_id' => 0]);
 });
+
+it('scopeables 引用未声明的实例键时抛异常', function () {
+    Utils::getScopeable('missing');
+})->throws(CmsException::class);

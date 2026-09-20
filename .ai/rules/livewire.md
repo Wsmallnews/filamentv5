@@ -6,7 +6,7 @@ paths:
 # Livewire
 
 ## Livewire 组件分层：Components/ 为内嵌组件由调用方传 scopeable，目录外为整页组件走 Base 模块 scope
-Livewire 目录分层约定：Components/ 目录下全部是内嵌组件——不可直接访问（不配路由），所需 scopeable 参数一律由调用处显式传入（blade 里 :scope-type/:scope-id 或父组件传递），组件自身不读模块默认 scope；Components/ 之外的类都是整页组件——必须配置路由直接访问，默认继承模块 Base（cms 的 Base 覆写了 getScopeable()/getScopeType()/getScopeId() 返回 Utils::getScopeable() 即当前模块配置的 scopeable），页面级查询直接用 $this->getScopeable()。新建组件时按此判断放哪个目录：要传参内嵌 → Components/；要路由直达 → 目录外 + Base 子类 + 路由注册。
+Livewire 目录分层约定：Components/ 目录下全部是内嵌组件——不可直接访问（不配路由），所需 scopeable 参数一律由调用处显式传入（blade 里 :scope-type/:scope-id 或父组件传递），组件自身不读模块默认 scope；Components/ 之外的类都是整页组件——必须配置路由直接访问，默认继承模块 Base（cms 的 Base 覆写了 getScopeable()/getScopeType()/getScopeId() 返回 Utils::getScopeable() 即 config scopeables 的 main 默认实例，差异实例如 footer 经 Utils::getScopeable('footer')），页面级查询直接用 $this->getScopeable()。新建组件时按此判断放哪个目录：要传参内嵌 → Components/；要路由直达 → 目录外 + Base 子类 + 路由注册。
 
 ## CanBeContained 视图按子元素形态选容器模式：内容贴卡型边距在容器，行式列表型边距在行
 内嵌组件 use `Wsmallnews\Support\Livewire\Concerns\CanBeContained`（`public bool $contained = true`）后，视图用 `@class` 写「恒定基线 + 条件卡片」：基线项（数组无键项）恒渲染布局类，`=> $contained` 项按需追加卡片外观。`contained=false` 只去掉卡片皮（sn-container），组件内部结构和行边距原样保留。按形态二选一：

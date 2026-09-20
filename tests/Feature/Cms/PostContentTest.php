@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -11,6 +12,21 @@ use Wsmallnews\Cms\Models\Post;
 use Wsmallnews\Support\Enums\ContentType;
 
 uses(RefreshDatabase::class);
+
+// 后台资源表单/表格经 config panel_register 注册：livewire() 直连不经生产环境的
+// IdentifyResourceConfiguration/IdentifyPageConfiguration 中间件，文件级显式进入
+// admin 面板 + 默认配置上下文；afterEach 复位，避免污染同进程的前端组件测试
+beforeEach(function () {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Filament::setCurrentPageConfigurationKey('default');
+    Filament::setCurrentResourceConfigurationKey('default');
+});
+
+afterEach(function () {
+    Filament::setCurrentPanel(null);
+    Filament::setCurrentPageConfigurationKey(null);
+    Filament::setCurrentResourceConfigurationKey(null);
+});
 
 use function Pest\Livewire\livewire;
 
@@ -117,7 +133,8 @@ it('编辑 post 时回填当前类型内容并可切换为富文本', function (
         'content_type' => ContentType::Markdown->value,
     ]);
 
-    livewire(EditPost::class, ['record' => $post->slug])
+    // 面板语境下 record 按 id 绑定（Post::getRouteKeyName 在 panel 中返回主键，与生产一致）
+    livewire(EditPost::class, ['record' => $post->getKey()])
         ->assertFormSet([
             'content.content_type' => ContentType::Markdown,
             'content.content_markdown' => '# 原始内容',

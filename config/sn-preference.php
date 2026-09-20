@@ -4,11 +4,13 @@ use Wsmallnews\Preference\Models;
 
 return [
     /**
-     * Default scopeable configuration
+     * Scopeable 实例声明（main 为默认实例，必须存在；差异实例按需在此声明）
      */
-    'scopeable' => [
-        'scope_type' => 'sn-preference',
-        'scope_id' => 0,
+    'scopeables' => [
+        'main' => [
+            'scope_type' => 'sn-preference',
+            'scope_id' => 0,
+        ],
     ],
 
     /**

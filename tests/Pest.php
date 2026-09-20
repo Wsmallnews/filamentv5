@@ -1,5 +1,6 @@
 <?php
 
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,6 +18,36 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
  // ->use(RefreshDatabase::class)
     ->in('Feature');
+
+/*
+|--------------------------------------------------------------------------
+| Global Helpers
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * livewire()/静态调用不经生产环境的 IdentifyResourceConfiguration /
+ * IdentifyPageConfiguration 中间件（页面与资源的 configuration key 是两套），
+ * 直连测试资源/页面时需显式进入 admin 面板 + 默认配置上下文
+ */
+function withAdminPanelContext(callable $callback): mixed
+{
+    $previousPanel = Filament::getCurrentPanel();
+    $previousPageKey = Filament::getCurrentPageConfigurationKey();
+    $previousResourceKey = Filament::getCurrentResourceConfigurationKey();
+
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Filament::setCurrentPageConfigurationKey('default');
+    Filament::setCurrentResourceConfigurationKey('default');
+
+    try {
+        return $callback();
+    } finally {
+        Filament::setCurrentPanel($previousPanel);
+        Filament::setCurrentPageConfigurationKey($previousPageKey);
+        Filament::setCurrentResourceConfigurationKey($previousResourceKey);
+    }
+}
 
 /*
 |--------------------------------------------------------------------------

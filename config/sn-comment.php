@@ -8,11 +8,13 @@ use Wsmallnews\Support\Enums\ContentType;
 
 return [
     /**
-     * Default scopeable
+     * Scopeable 实例声明（main 为默认实例，必须存在；差异实例按需在此声明）
      */
-    'scopeable' => [
-        'scope_type' => 'sn-comment',
-        'scope_id' => 0,
+    'scopeables' => [
+        'main' => [
+            'scope_type' => 'sn-comment',
+            'scope_id' => 0,
+        ],
     ],
 
     /**
