@@ -1,0 +1,14 @@
+{
+    "editor.tokenColorCustomizations": {
+        "comments": "#99aaa0"
+    },
+    // PHP 格式化交给提交前的 pint（vendor/bin/pint，规则在各仓库 pint.json）：
+    // 编辑器内置格式化器与 pint 规则不一致（concat/types 空格等），保留保存时格式化会持续互相覆盖。
+    // 需要手动格式化时在终端跑：vendor/bin/pint --dirty（只处理改动文件）
+    "[php]": {
+        "editor.formatOnSave": false
+    },
+    "[blade]": {
+        "editor.formatOnSave": false
+    }
+}
