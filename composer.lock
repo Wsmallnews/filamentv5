@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f846496542d4e48d25a68981dbf09b20",
+    "content-hash": "51cfdff4bcca565e8769c513c9bd6a1f",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -10549,7 +10549,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/category",
-                "reference": "c91216c27f1b0dd773b366ea5a6b53d9b8413ca8"
+                "reference": "7819de11facd57bccc6380d04d09332184f9411e"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -10635,7 +10635,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/cms",
-                "reference": "62e5afac03ae06b198400b01c8f6ad692b05c063"
+                "reference": "f0714488ac1248e232eca31c30dd91e854632028"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -10643,11 +10643,13 @@
                 "guava/filament-icon-picker": "^3.0 || ^4.0",
                 "php": "^8.2",
                 "spatie/laravel-package-tools": "^1.15.0",
+                "wsmallnews/category": "^1.0",
                 "wsmallnews/comment": "^1.0",
                 "wsmallnews/filament-nestedset": "^3.0",
                 "wsmallnews/member": "^1.0",
                 "wsmallnews/preference": "^1.0",
-                "wsmallnews/support": "^1.0"
+                "wsmallnews/support": "^1.0",
+                "wsmallnews/user": "^1.0"
             },
             "require-dev": {
                 "laravel/pint": "^1.0",
@@ -10728,7 +10730,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/comment",
-                "reference": "bce89da8d2a3021a517d10bf4d258b76e52a531e"
+                "reference": "0e32f1a6647977db67a263d9a5f27a0fd7c4c661"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -10910,7 +10912,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/member",
-                "reference": "0868d5a74ad8ec0a7276c35418d4c2cbaec8f349"
+                "reference": "b9e183e6ebe112f325525d192a796c709783e630"
             },
             "require": {
                 "filament/filament": "^5.0",
@@ -11006,12 +11008,196 @@
             }
         },
         {
+            "name": "wsmallnews/order",
+            "version": "1.x-dev",
+            "dist": {
+                "type": "path",
+                "url": "./addons/order",
+                "reference": "edc55d597e3b15ecfc00c5108091108688e7802b"
+            },
+            "require": {
+                "filament/filament": "^4.0 || ^5.0",
+                "php": "^8.2",
+                "spatie/laravel-package-tools": "^1.15.0",
+                "wsmallnews/product": "^1.0",
+                "wsmallnews/support": "^1.0",
+                "wsmallnews/user": "^1.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.0 || ^8.0",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-arch": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^2.0 || ^3.0 || ^4.0",
+                "spatie/laravel-ray": "^1.26"
+            },
+            "suggest": {
+                "wsmallnews/pay": "支付记录关联（sn-order.models.pay_record）需要 pay 包提供 PayRecord 模型"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Wsmallnews\\Order\\OrderServiceProvider"
+                    ],
+                    "aliases": {
+                        "Order": "Wsmallnews\\Order\\Facades\\Order"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Wsmallnews\\Order\\": "src/",
+                    "Wsmallnews\\Order\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Wsmallnews\\Order\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "post-autoload-dump": [
+                    "@php ./vendor/bin/testbench package:discover --ansi"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "vendor/bin/pest"
+                ],
+                "test-coverage": [
+                    "vendor/bin/pest --coverage"
+                ],
+                "format": [
+                    "vendor/bin/pint"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "smallnews",
+                    "email": "1371606921@qq.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Wsmallnews system order modules",
+            "homepage": "https://github.com/wsmallnews/order",
+            "keywords": [
+                "Wsmallnews",
+                "filament",
+                "laravel",
+                "order",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/wsmallnews/order/issues",
+                "source": "https://github.com/wsmallnews/order"
+            },
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "wsmallnews/pay",
+            "version": "1.x-dev",
+            "dist": {
+                "type": "path",
+                "url": "./addons/pay",
+                "reference": "321dceee33e8c1019fef2509fa338e2bca6164ef"
+            },
+            "require": {
+                "filament/filament": "^4.0 || ^5.0",
+                "php": "^8.2",
+                "spatie/laravel-package-tools": "^1.15.0",
+                "wsmallnews/support": "^1.0",
+                "yansongda/pay": "^3.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.0 || ^8.0",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-arch": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^2.0 || ^3.0 || ^4.0",
+                "spatie/laravel-ray": "^1.26"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Wsmallnews\\Pay\\PayServiceProvider"
+                    ],
+                    "aliases": {
+                        "Pay": "Wsmallnews\\Pay\\Facades\\Pay"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Wsmallnews\\Pay\\": "src/",
+                    "Wsmallnews\\Pay\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Wsmallnews\\Pay\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "post-autoload-dump": [
+                    "@php ./vendor/bin/testbench package:discover --ansi"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "vendor/bin/pest"
+                ],
+                "test-coverage": [
+                    "vendor/bin/pest --coverage"
+                ],
+                "format": [
+                    "vendor/bin/pint"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "smallnews",
+                    "email": "1371606921@qq.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Wsmallnews system pay modules",
+            "homepage": "https://github.com/wsmallnews/pay",
+            "keywords": [
+                "Wsmallnews",
+                "filament",
+                "laravel",
+                "pay",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/wsmallnews/pay/issues",
+                "source": "https://github.com/wsmallnews/pay"
+            },
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "wsmallnews/preference",
             "version": "1.x-dev",
             "dist": {
                 "type": "path",
                 "url": "./addons/preference",
-                "reference": "147d3ceb7a56127e4784d442ce04654f37e2a891"
+                "reference": "080b3626aea4348fbc6d2ed3fc5322458f149e41"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -11110,12 +11296,14 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/product",
-                "reference": "48c6b645382fc5b20850c65b13a1f739dd86b4aa"
+                "reference": "a9a4a1906888812fc71f683917d53a85a32547ac"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
                 "php": "^8.2",
                 "spatie/laravel-package-tools": "^1.15.0",
+                "wsmallnews/category": "^1.0",
+                "wsmallnews/preference": "^1.0",
                 "wsmallnews/support": "^1.0"
             },
             "require-dev": {
@@ -11193,14 +11381,15 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/shop",
-                "reference": "49a8dcf7f64727b4de3c4d399addbcb1a3be8f7a"
+                "reference": "ed73706b54558d8b7e425f6ff6cf0db8835f1e0c"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
-                "filament/spatie-laravel-settings-plugin": "^4.0 || ^5.0",
                 "php": "^8.2",
                 "spatie/laravel-package-tools": "^1.15.0",
-                "wsmallnews/category": "^1.0",
+                "wsmallnews/cms": "^1.0",
+                "wsmallnews/member": "^1.0",
+                "wsmallnews/preference": "^1.0",
                 "wsmallnews/product": "^1.0",
                 "wsmallnews/support": "^1.0",
                 "wsmallnews/user": "^1.0"
@@ -11283,7 +11472,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/support",
-                "reference": "9351c3f87e0e21498eb48b37a6fa7fd22fe72595"
+                "reference": "1d62edc8e726ef9ba600f93277870e7763da382b"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -11390,7 +11579,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/user",
-                "reference": "06a599b1be81432d918b63e631ab54194162e7e0"
+                "reference": "99fc1dc3f266dbf3109cde4e7b18cab226deda77"
             },
             "require": {
                 "bacon/bacon-qr-code": "^3.0",
@@ -11473,6 +11662,214 @@
             "transport-options": {
                 "relative": true
             }
+        },
+        {
+            "name": "yansongda/artful",
+            "version": "v1.1.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/yansongda/artful.git",
+                "reference": "7266895d5323934b4712f5bb3988ede79fbd16cf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/yansongda/artful/zipball/7266895d5323934b4712f5bb3988ede79fbd16cf",
+                "reference": "7266895d5323934b4712f5bb3988ede79fbd16cf",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/psr7": "^2.6 || ^3.0",
+                "php": ">=8.0",
+                "psr/container": "^1.1 || ^2.0",
+                "psr/event-dispatcher": "^1.0",
+                "psr/http-client": "^1.0",
+                "psr/http-message": "^1.1 || ^2.0",
+                "psr/log": "^1.1 || ^2.0 || ^3.0",
+                "yansongda/supports": "~4.0.10"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.44",
+                "guzzlehttp/guzzle": "^7.0 || ^8.0",
+                "hyperf/pimple": "^2.2",
+                "mockery/mockery": "^1.4",
+                "monolog/monolog": "^2.2",
+                "phpstan/phpstan": "^1.0.0 || ^2.0.0",
+                "phpunit/phpunit": "^9.0",
+                "symfony/event-dispatcher": "^5.2.0",
+                "symfony/http-foundation": "^5.2.0",
+                "symfony/psr-http-message-bridge": "^2.1",
+                "symfony/var-dumper": "^5.1"
+            },
+            "suggest": {
+                "hyperf/pimple": "其它/无框架下使用 SDK，请安装，任选其一",
+                "illuminate/container": "其它/无框架下使用 SDK，请安装，任选其一"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/Functions.php"
+                ],
+                "psr-4": {
+                    "Yansongda\\Artful\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "yansongda",
+                    "email": "me@yansongda.cn"
+                }
+            ],
+            "description": "Artful 是一个简单易用的 API 请求框架 PHP Api RequesT Framwork U Like。",
+            "keywords": [
+                "api",
+                "artful",
+                "framework",
+                "request"
+            ],
+            "support": {
+                "homepage": "https://artful.yansongda.cn",
+                "issues": "https://github.com/yansongda/artful/issues",
+                "source": "https://github.com/yansongda/artful"
+            },
+            "time": "2026-08-13T16:42:55+00:00"
+        },
+        {
+            "name": "yansongda/pay",
+            "version": "v3.7.20",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/yansongda/pay.git",
+                "reference": "26987ebf789f1e7f0a85febb640986ab4289fd7f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/yansongda/pay/zipball/26987ebf789f1e7f0a85febb640986ab4289fd7f",
+                "reference": "26987ebf789f1e7f0a85febb640986ab4289fd7f",
+                "shasum": ""
+            },
+            "require": {
+                "ext-bcmath": "*",
+                "ext-json": "*",
+                "ext-libxml": "*",
+                "ext-openssl": "*",
+                "ext-simplexml": "*",
+                "php": ">=8.0",
+                "yansongda/artful": "~1.1.3",
+                "yansongda/supports": "~4.0.10"
+            },
+            "conflict": {
+                "hyperf/framework": "<3.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.44",
+                "guzzlehttp/guzzle": "^7.0",
+                "hyperf/pimple": "^2.2",
+                "jetbrains/phpstorm-attributes": "^1.1",
+                "mockery/mockery": "^1.4",
+                "monolog/monolog": "^2.2",
+                "phpstan/phpstan": "^1.0.0 || ^2.0.0",
+                "phpunit/phpunit": "^9.0",
+                "symfony/event-dispatcher": "^5.2.0",
+                "symfony/http-foundation": "^5.2.0",
+                "symfony/psr-http-message-bridge": "^2.1",
+                "symfony/var-dumper": "^5.1"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/Functions.php"
+                ],
+                "psr-4": {
+                    "Yansongda\\Pay\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "yansongda",
+                    "email": "me@yansongda.cn"
+                }
+            ],
+            "description": "可能是我用过的最优雅的 Alipay 和 WeChat 的支付 SDK 扩展包了",
+            "keywords": [
+                "alipay",
+                "pay",
+                "wechat"
+            ],
+            "support": {
+                "homepage": "https://pay.yansongda.cn",
+                "issues": "https://github.com/yansongda/pay/issues",
+                "source": "https://github.com/yansongda/pay"
+            },
+            "time": "2026-03-23T07:33:29+00:00"
+        },
+        {
+            "name": "yansongda/supports",
+            "version": "v4.0.12",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/yansongda/supports.git",
+                "reference": "308de376d20cb1cd4f959644793e0582ccd1ef6d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/yansongda/supports/zipball/308de376d20cb1cd4f959644793e0582ccd1ef6d",
+                "reference": "308de376d20cb1cd4f959644793e0582ccd1ef6d",
+                "shasum": ""
+            },
+            "require": {
+                "ext-ctype": "*",
+                "ext-mbstring": "*",
+                "php": ">=8.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.0",
+                "mockery/mockery": "^1.4",
+                "phpstan/phpstan": "^1.1.0",
+                "phpunit/phpunit": "^9.0"
+            },
+            "suggest": {
+                "monolog/monolog": "Use logger",
+                "symfony/console": "Use stdout logger"
+            },
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "src/Functions.php"
+                ],
+                "psr-4": {
+                    "Yansongda\\Supports\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "yansongda",
+                    "email": "me@yansongda.cn"
+                }
+            ],
+            "description": "common components",
+            "keywords": [
+                "array",
+                "collection",
+                "config",
+                "support"
+            ],
+            "support": {
+                "issues": "https://github.com/yansongda/supports/issues",
+                "source": "https://github.com/yansongda/supports"
+            },
+            "time": "2025-01-08T08:55:20+00:00"
         }
     ],
     "packages-dev": [
@@ -14664,6 +15061,8 @@
         "wsmallnews/comment": 20,
         "wsmallnews/filament-nestedset": 20,
         "wsmallnews/member": 20,
+        "wsmallnews/order": 20,
+        "wsmallnews/pay": 20,
         "wsmallnews/preference": 20,
         "wsmallnews/product": 20,
         "wsmallnews/shop": 20,

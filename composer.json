@@ -21,6 +21,8 @@
         "wsmallnews/comment": "v1.x-dev",
         "wsmallnews/filament-nestedset": "^3.x-dev",
         "wsmallnews/member": "v1.x-dev",
+        "wsmallnews/order": "v1.x-dev",
+        "wsmallnews/pay": "v1.x-dev",
         "wsmallnews/preference": "v1.x-dev",
         "wsmallnews/product": "v1.x-dev",
         "wsmallnews/shop": "v1.x-dev",
@@ -128,6 +130,14 @@
         "member": {
             "type": "path",
             "url": "./addons/member"
+        },
+        "order": {
+            "type": "path",
+            "url": "./addons/order"
+        },
+        "pay": {
+            "type": "path",
+            "url": "./addons/pay"
         },
         "preference": {
             "type": "path",

@@ -9,6 +9,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | addons/*/config/*.php | .ai/rules/config.md |
 | addons/*/resources/views/** | .ai/rules/container-queries.md |
 | addons/*/resources/css/** | .ai/rules/css.md |
+| addons/filament-nestedset/src/** | .ai/rules/filament-nestedset-src.md |
 | addons/*/src/Filament/** | .ai/rules/filament.md |
 | addons/*/resources/js/** | .ai/rules/js.md |
 | lang/** | .ai/rules/lang.md |

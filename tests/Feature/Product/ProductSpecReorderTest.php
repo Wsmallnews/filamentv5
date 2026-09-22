@@ -35,7 +35,7 @@ it('编辑时重排规格值即时重编组合顺序并保留值与 key', functi
     $this->actingAs($admin, 'admin');
 
     $product = Product::factory()->specType(ProductSpecType::Multiple)->create([
-        'scope_type' => 'sn-product',
+        'scope_type' => 'sn-shop',
         'scope_id' => 0,
     ]);
 

@@ -182,7 +182,7 @@ it('编辑产品时回填纯图内容并可切换为富文本', function () {
     Storage::put('sn/product/contents/old-detail.jpg', 'fake-content');
 
     $product = Product::factory()->create([
-        'scope_type' => 'sn-product',
+        'scope_type' => 'sn-shop',
         'scope_id' => 0,
     ]);
     $product->content()->create([

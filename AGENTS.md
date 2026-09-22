@@ -969,8 +969,6 @@ abstract class Base extends Page
 - `getCommentStatus()` → 仅从自定义属性读取
 - `getEmptyLabel()` / `getEmptyTipLabel()` → 优先从自定义属性，fallback 到 parent
 
-
-
 ### Livewire Concerns（Traits）
 
 #### CommentAction（核心操作逻辑）
@@ -2103,7 +2101,6 @@ final class PostResource extends BaseResource
     use CanBeConfigured;
 
     protected static ?string $configurationClass = ResourceConfiguration::class;
-
 
 }
 ```

@@ -23,6 +23,8 @@ use Wsmallnews\Category\CategoryPlugin;
 use Wsmallnews\Cms\CmsPlugin;
 use Wsmallnews\Comment\CommentPlugin;
 use Wsmallnews\Member\MemberPlugin;
+use Wsmallnews\Order\OrderPlugin;
+use Wsmallnews\Pay\PayPlugin;
 use Wsmallnews\Product\ProductPlugin;
 use Wsmallnews\Shop\ShopPlugin;
 use Wsmallnews\Support\Filament\Resources\ActivityLogs\ActivityLogResource;
@@ -67,6 +69,8 @@ class AdminPanelProvider extends PanelProvider
                 CategoryPlugin::make(),
                 CmsPlugin::make(),
                 MemberPlugin::make(),
+                OrderPlugin::make(),
+                PayPlugin::make(),
                 ProductPlugin::make(),
                 ShopPlugin::make(),
                 UserPlugin::make(),

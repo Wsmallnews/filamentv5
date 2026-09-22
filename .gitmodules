@@ -31,4 +31,6 @@
 [submodule "addons/order"]
 	path = addons/order
 	url = git@github.com:Wsmallnews/order.git
-	branch = v1
+[submodule "addons/pay"]
+	path = addons/pay
+	url = git@github.com:Wsmallnews/pay.git

@@ -15,6 +15,15 @@
 /* wsmallnews/product */
 @import "../../vendor/wsmallnews/product/resources/css/index.css";
 
+/* wsmallnews/shop */
+@import "../../vendor/wsmallnews/shop/resources/css/index.css";
+
+/* wsmallnews/order */
+@import "../../vendor/wsmallnews/order/resources/css/index.css";
+
+/* wsmallnews/pay */
+@import "../../vendor/wsmallnews/pay/resources/css/index.css";
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
