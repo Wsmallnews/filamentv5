@@ -3,12 +3,12 @@
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Wsmallnews\Order\Contracts\PayableInterface;
 use Wsmallnews\Order\Enums\Item\EvaluateStatus;
 use Wsmallnews\Order\Enums\Order\Status;
 use Wsmallnews\Order\Models\Order;
 use Wsmallnews\Order\OrderPlugin;
 use Wsmallnews\Order\Support\Utils;
+use Wsmallnews\Pay\Contracts\PayableInterface;
 use Wsmallnews\Pay\Models\PayRecord;
 
 uses(RefreshDatabase::class);
@@ -17,7 +17,7 @@ it('解析 order 模块 scopeable main 默认实例', function () {
     expect(Utils::getScopeable())->toBe(['scope_type' => 'sn-order', 'scope_id' => 0]);
 });
 
-it('order 模型实现本地支付契约并注册 morph 别名', function () {
+it('order 模型实现 pay 包支付契约并注册 morph 别名', function () {
     expect(Order::class)->toImplement(PayableInterface::class)
         ->and((new Order)->getMorphClass())->toBe('sn_order');
 });

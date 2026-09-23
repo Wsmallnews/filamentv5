@@ -19,10 +19,12 @@ return new class extends Migration
             $table->morphs('payer');
             $table->morphs('payable');
             $table->json('payable_options')->nullable()->comment('payable选项');
-            $table->string('pay_method', 20)->comment('支付方式');
+            $table->string('pay_method', 20)->comment('支付方式(终端)：mp/mini/h5/app/scan/balance等');
+            $table->string('channel', 20)->comment('支付渠道：wechat/alipay/money等');
             $table->string('currency', 3)->default('CNY')->comment('支付币种(ISO 4217)，创建时快照');
             $table->unsignedBigInteger('pay_fee')->default(0)->comment('支付金额');
             $table->unsignedBigInteger('real_fee')->default(0)->comment('实际金额');
+            $table->json('options')->nullable()->comment('附加信息(钱包扣减汇率快照等)');
             $table->string('transaction_id', 60)->nullable()->comment('交易单号');
             $table->json('buyer_info')->nullable()->comment('交易用户');
             $table->json('payment_json')->nullable()->comment('交易原始数据');

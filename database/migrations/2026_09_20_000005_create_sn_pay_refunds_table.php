@@ -20,7 +20,8 @@ return new class extends Migration
             $table->morphs('payer');
             $table->morphs('refundable');
             $table->json('refundable_options')->nullable()->comment('refundable选项');
-            $table->string('pay_method', 20)->comment('支付方式');
+            $table->string('pay_method', 20)->comment('支付方式(终端)');
+            $table->string('channel', 20)->comment('支付渠道(与支付单一致)');
             $table->string('currency', 3)->default('CNY')->comment('退款币种(ISO 4217)，与支付单一致');
             $table->unsignedBigInteger('refund_fee')->default(0)->comment('退款金额');
             $table->unsignedBigInteger('real_refund_fee')->default(0)->comment('实际退款金额');
