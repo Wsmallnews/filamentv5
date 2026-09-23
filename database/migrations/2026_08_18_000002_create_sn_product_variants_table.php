@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('product_sn')->nullable()->comment('货号');
             $table->string('image')->nullable()->comment('规格封面');
             $table->string('spec_type', 20)->comment('spec_type类型');
-            $table->unsignedInteger('price')->default(0)->comment('现价');
+            $table->unsignedBigInteger('price')->default(0)->comment('现价');
             $table->integer('stock')->default(0)->comment('库存');
             $table->integer('sales')->default(0)->comment('销量');
             $table->string('stock_unit', 20)->nullable()->comment('库存单位');

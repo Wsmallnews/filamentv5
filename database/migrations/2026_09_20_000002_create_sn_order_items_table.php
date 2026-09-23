@@ -25,8 +25,8 @@ return new class extends Migration
             $table->string('relate_subtitle')->nullable()->comment('关联副标题');
             $table->json('relate_attributes')->nullable()->comment('属性集合');
             $table->string('relate_image')->nullable()->comment('关联图片');
-            $table->unsignedInteger('relate_original_price')->default(0)->comment('关联原始价格');
-            $table->unsignedInteger('relate_price')->default(0)->comment('关联价格');
+            $table->unsignedBigInteger('relate_original_price')->default(0)->comment('关联原始价格');
+            $table->unsignedBigInteger('relate_price')->default(0)->comment('关联价格');
             $table->unsignedInteger('relate_stock_num')->default(0)->comment('关联单位数量');
             $table->unsignedInteger('relate_num')->default(0)->comment('关联数量');
             $table->decimal('relate_weight', 10, 2)->default(0)->comment('关联重量KG');
@@ -58,30 +58,30 @@ return new class extends Migration
             $table->string('stock_unit', 30)->nullable()->comment('库存单位');
             $table->string('stock_type', 30)->comment('库存类型');
 
-            $table->json('original_amount_fields')->nullable()->comment('原费用集合');
-            $table->json('amount_fields')->nullable()->comment('现费用集合');
+            $table->json('original_amount_fields')->nullable()->comment('原费用集合(整数分，键=>金额)');
+            $table->json('amount_fields')->nullable()->comment('现费用集合(整数分，键=>金额)');
 
-            $table->unsignedInteger('original_amount')->default(0)->comment('原始总金额(含运费)');
-            $table->unsignedInteger('amount')->default(0)->comment('总金额(含运费)');
+            $table->unsignedBigInteger('original_amount')->default(0)->comment('原始总金额(含运费)');
+            $table->unsignedBigInteger('amount')->default(0)->comment('总金额(含运费)');
             $table->unsignedInteger('score_amount')->default(0)->comment('积分总数');
 
-            $table->json('discount_fields')->nullable()->comment('优惠费用集合');
-            $table->unsignedInteger('discount_amount')->default(0)->comment('优惠总金额');
+            $table->json('discount_fields')->nullable()->comment('优惠费用集合(整数分，键=>金额)');
+            $table->unsignedBigInteger('discount_amount')->default(0)->comment('优惠总金额');
 
             // 下面的字段根据情况再做调整
-            $table->unsignedInteger('total_fee')->default(0)->comment('真实金额(含运费)');
-            $table->unsignedInteger('reonly_fee')->default(0)->comment('真实金额(不含运费)');
+            $table->unsignedBigInteger('total_fee')->default(0)->comment('真实金额(含运费)');
+            $table->unsignedBigInteger('reonly_fee')->default(0)->comment('真实金额(不含运费)');
             $table->string('pay_status', 20)->comment('支付状态');
 
             $table->string('delivery_type', 20)->comment('配送方式');
             $table->string('delivery_status', 20)->comment('配送状态');
-            $table->unsignedInteger('delivery_amount')->default(0)->comment('配送费用');
+            $table->unsignedBigInteger('delivery_amount')->default(0)->comment('配送费用');
             $table->unsignedBigInteger('delivery_id')->default(0)->comment('配送模板');
 
             $table->string('aftersale_status', 20)->comment('售后状态');
             $table->string('evaluate_status', 20)->comment('评价状态');
             $table->string('refund_status', 20)->comment('退款状态');
-            $table->unsignedInteger('refunded_fee')->default(0)->comment('退款金额');
+            $table->unsignedBigInteger('refunded_fee')->default(0)->comment('退款金额');
             $table->string('refund_msg')->nullable()->comment('退款原因');
 
             $table->unsignedBigInteger('express_package_id')->default(0)->comment('快递包裹');

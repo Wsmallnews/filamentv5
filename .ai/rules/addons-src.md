@@ -22,3 +22,12 @@ member 与 user 是平级包：user = 认证体系（guard/登录注册组件/Us
 
 ## 异常消息必须英文或多语言键；安装命令命名 XxxInstallCommand；功能子系统归 Features/
 抛出异常的消息文本必须是纯英文或经翻译体系（__() 多语言键）输出，禁止硬编码中文异常消息（中文只允许出现在注释与翻译文件 zh_CN 中）。理由：异常消息会被日志/监控/检索工具消费，硬编码中文在非中文环境不可检索。新代码一律遵守；存量中文异常消息在触碰到该文件时顺手改为英文。另外：安装命令类命名统一为 XxxInstallCommand（对齐 cms/member/product 既有惯例）。support 的功能子系统一律放 src/Features/<子系统>/ 目录（Search/Feed/Seo/Modules 等），不要在 src/ 下新开顶层功能目录。
+
+## 金额处理统一走 sn_money()（MoneyManager），禁止绕过规范手写金额逻辑
+1) 存储一律整数最小单位（分），列类型 unsignedBigInteger（score_amount 等积分字段除外）。
+2) 币种单据级快照：sn_orders/sn_pay_records/sn_pay_refunds 必有 currency char(3)（默认 CNY）；sn_products.currency 可空=站点默认；order_items/变体不存币种随单据/SPU。
+3) JSON 金额明细（amount_fields 等）存整数分（键=>金额），不存小数不嵌币种。
+4) 运算/分摊/格式化唯一入口 sn_money()（MoneyManager）：int=分、string/float=元、Money 透传；优惠拆单用 allocate() 余数分配，禁止手工除法四舍五入。
+5) 模型 cast 用 MoneyCast::class.':currency' 绑定行内币种列（写入标量视为元）。
+6) 默认币种唯一事实源 config('app.currency')（.env APP_CURRENCY），SupportServiceProvider 已激活 Number::useLocale/useCurrency。
+7) 旧 Features/Currency + sn_currency() 已 @deprecated，order 管道阶段 C 改造后删除。

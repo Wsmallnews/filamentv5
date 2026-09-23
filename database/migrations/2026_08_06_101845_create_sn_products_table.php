@@ -24,7 +24,8 @@ return new class extends Migration
             $table->string('title')->nullable()->comment('标题');
             $table->string('subtitle')->nullable()->comment('副标题');
             $table->string('sku_type', 20)->comment('sku类型');
-            $table->unsignedInteger('price')->default(0)->comment('现价');
+            $table->unsignedBigInteger('price')->default(0)->comment('现价');
+            $table->string('currency', 3)->nullable()->comment('定价币种(ISO 4217)，空=站点默认币种；变体价格随本币种');
 
             $table->string('stock_type', 20)->comment('库存类型');
             $table->string('stock_unit', 20)->nullable()->comment('库存单位');
