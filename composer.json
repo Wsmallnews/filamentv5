@@ -27,7 +27,8 @@
         "wsmallnews/product": "v1.x-dev",
         "wsmallnews/shop": "v1.x-dev",
         "wsmallnews/support": "v1.x-dev",
-        "wsmallnews/user": "v1.x-dev"
+        "wsmallnews/user": "v1.x-dev",
+        "wsmallnews/wallet": "v1.x-dev"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -158,6 +159,10 @@
         "user": {
             "type": "path",
             "url": "./addons/user"
+        },
+        "wallet": {
+            "type": "path",
+            "url": "./addons/wallet"
         }
     }
 }

@@ -34,3 +34,6 @@
 [submodule "addons/pay"]
 	path = addons/pay
 	url = git@github.com:Wsmallnews/pay.git
+[submodule "addons/wallet"]
+	path = addons/wallet
+	url = git@github.com:Wsmallnews/wallet.git

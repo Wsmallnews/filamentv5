@@ -192,6 +192,9 @@ it('自定义渠道经 extend 注册即可用于支付（聚合平台接入约�
 it('未绑定钱包契约时余额通道不可用', function () {
     config(['sn-pay.channels.money.enabled' => true]);
 
+    // wallet 扩展安装后始终绑定契约，此处显式卸载以模拟未接入钱包的状态
+    app()->offsetUnset(WalletOperator::class);
+
     app('sn-pay')->payable(createPayTestOrder())->channel('money', 'balance')->pay();
 })->throws(PayException::class, 'Wallet operator is not bound');
 

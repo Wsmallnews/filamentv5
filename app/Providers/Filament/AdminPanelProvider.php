@@ -31,6 +31,7 @@ use Wsmallnews\Support\Filament\Resources\ActivityLogs\ActivityLogResource;
 use Wsmallnews\Support\Filament\Resources\ScheduledTasks\ScheduledTaskResource;
 use Wsmallnews\Support\Support\Theme;
 use Wsmallnews\User\UserPlugin;
+use Wsmallnews\Wallet\WalletPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -75,6 +76,7 @@ class AdminPanelProvider extends PanelProvider
                 ShopPlugin::make(),
                 UserPlugin::make(),
                 CommentPlugin::make(),
+                WalletPlugin::make(),
             ])
             ->middleware([
                 EncryptCookies::class,
