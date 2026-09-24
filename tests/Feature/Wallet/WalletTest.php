@@ -12,6 +12,7 @@ use Wsmallnews\Wallet\Models\Wallet as WalletModel;
 use Wsmallnews\Wallet\Models\WalletType;
 use Wsmallnews\Wallet\Services\ConversionService;
 use Wsmallnews\Wallet\Services\RateService;
+use Wsmallnews\Wallet\Support\TransactionTypes;
 use Wsmallnews\Wallet\Support\Utils;
 
 uses(RefreshDatabase::class);
@@ -132,7 +133,7 @@ it('余额不足时扣减被拒且不留任何痕迹', function () {
     Wallet::credit($member, 'point', 100);
 
     Wallet::debit($member, 'point', 101);
-})->throws(WalletException::class, 'Insufficient available balance.');
+})->throws(WalletException::class, '积分可用余额不足');
 
 it('余额不足时扣减被拒且余额不变', function () {
     registerWalletTestTypes();
@@ -193,7 +194,7 @@ it('佣金场景：冻结入账不可提现，解冻后可提现', function () {
 
     // 用户提现（扣可用）失败：可用为 0，不允许负数
     Wallet::debit($member, 'point', 100);
-})->throws(WalletException::class, 'Insufficient available balance.');
+})->throws(WalletException::class, '积分可用余额不足');
 
 it('佣金场景续：售后窗口内退款走冻结扣减，确认后解冻可提现', function () {
     registerWalletTestTypes();
@@ -240,7 +241,7 @@ it('冻结不足时冻结扣减被拒', function () {
     Wallet::credit($member, 'point', 100, ['frozen' => true]);
 
     Wallet::debitFrozen($member, 'point', 101);
-})->throws(WalletException::class, 'Insufficient frozen balance.');
+})->throws(WalletException::class, '积分冻结金额不足');
 
 /*
 |--------------------------------------------------------------------------
@@ -275,7 +276,7 @@ it('转账余额不足被拒', function () {
     Wallet::credit($from, 'point', 100);
 
     Wallet::transfer($from, $to, 'point', 101);
-})->throws(WalletException::class, 'Insufficient available balance.');
+})->throws(WalletException::class, '积分可用余额不足');
 
 /*
 |--------------------------------------------------------------------------
@@ -506,4 +507,75 @@ it('对账命令：正常通过，余额被篡改时报告并支持 --fix 修复
     $this->artisan('sn-wallet:reconcile', ['--fix' => true])->assertSuccessful();
 
     expect(Wallet::balance($member, 'point'))->toBe(700);
+});
+
+/*
+|--------------------------------------------------------------------------
+| 自定义流水类型与用户提示
+|--------------------------------------------------------------------------
+*/
+
+it('自定义流水类型可注册并正确落账', function () {
+    registerWalletTestTypes();
+    $member = createWalletTestMember();
+
+    Wallet::registerTransactionTypes([
+        'commission' => ['label' => '佣金发放', 'color' => 'success'],
+    ]);
+
+    $transaction = Wallet::credit($member, 'point', 500, ['transaction_type' => 'commission']);
+
+    expect($transaction->type)->toBe('commission')
+        ->and(TransactionTypes::label('commission'))->toBe('佣金发放')
+        ->and(TransactionTypes::color('commission'))->toBe('success')
+        ->and(TransactionTypes::label('recharge'))->toBe(__('sn-wallet::wallet.transaction_types.recharge'))
+        ->and($member->walletBalance ?? null)->toBeNull();     // Member 未 use HasWallets trait，走 facade
+
+    // 不可变约束对自定义类型同样生效
+    $transaction->update(['amount' => 999]);
+})->throws(WalletException::class, 'immutable');
+
+it('余额不足异常消息按当前语言翻译并含类型名（直接给前端用户）', function () {
+    registerWalletTestTypes();
+    $member = createWalletTestMember();
+
+    $exception = null;
+
+    try {
+        Wallet::debit($member, 'point', 100);
+    } catch (WalletException $e) {
+        $exception = $e;
+    }
+
+    // 默认 locale（zh_CN）：中文提示，catch 后直接 getMessage() 给前端
+    expect($exception)->toBeInstanceOf(WalletException::class)
+        ->and($exception->getMessage())->toBe('积分可用余额不足');
+
+    // 英文环境：英文模板 + 类型名
+    app()->setLocale('en');
+
+    try {
+        Wallet::debit($member, 'point', 100);
+    } catch (WalletException $e) {
+        expect($e->getMessage())->toBe('Insufficient 积分 balance');
+    }
+});
+
+it('冻结不足异常同样按当前语言翻译', function () {
+    registerWalletTestTypes();
+    $member = createWalletTestMember();
+
+    app()->setLocale('zh_CN');
+
+    Wallet::credit($member, 'point', 100, ['frozen' => true]);
+
+    $exception = null;
+
+    try {
+        Wallet::debitFrozen($member, 'point', 101);
+    } catch (WalletException $e) {
+        $exception = $e;
+    }
+
+    expect($exception?->getMessage())->toBe('积分冻结金额不足');
 });

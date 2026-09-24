@@ -11,6 +11,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | addons/*/resources/css/** | .ai/rules/css.md |
 | addons/filament-nestedset/src/** | .ai/rules/filament-nestedset-src.md |
 | addons/*/src/Filament/** | .ai/rules/filament.md |
+| ** | .ai/rules/general.md |
 | addons/*/resources/js/** | .ai/rules/js.md |
 | lang/** | .ai/rules/lang.md |
 | addons/*/src/Livewire/** | .ai/rules/livewire.md |
@@ -21,3 +22,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | addons/cms/src/** | .ai/rules/src.md |
 | addons/cms/src/**, addons/support/src/** | .ai/rules/support-src.md |
 | addons/cms/resources/views/** | .ai/rules/views.md |
+| addons/wallet/src/** | .ai/rules/wallet-src.md |

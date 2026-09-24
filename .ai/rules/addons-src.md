@@ -31,3 +31,6 @@ member 与 user 是平级包：user = 认证体系（guard/登录注册组件/Us
 5) 模型 cast 用 MoneyCast::class.':currency' 绑定行内币种列（写入标量视为元）。
 6) 默认币种唯一事实源 config('app.currency')（.env APP_CURRENCY），SupportServiceProvider 已激活 Number::useLocale/useCurrency。
 7) 旧 Features/Currency + sn_currency() 已 @deprecated，order 管道阶段 C 改造后删除。
+
+## 异常消息约定：业务异常抛出点翻译，系统错误保持英文
+用户可见的业务异常（余额不足、库存不足等）在抛出点直接经 __() 翻译并注入业务参数（如钱包类型名），调用方 catch 后 $e->getMessage() 即可直接返回前端：throw new XxxException(__('pkg::errors.insufficient', ['type' => $type->name]))。系统/配置类错误（类型未注册、快照缺失、参数非法等开发者错误）保持英文消息供日志/监控检索。约定记录在 .ai/rules，不要写在异常类 docblock 里。
