@@ -24,6 +24,7 @@
         "wsmallnews/order": "v1.x-dev",
         "wsmallnews/pay": "v1.x-dev",
         "wsmallnews/preference": "v1.x-dev",
+        "wsmallnews/profile": "v1.x-dev",
         "wsmallnews/product": "v1.x-dev",
         "wsmallnews/shop": "v1.x-dev",
         "wsmallnews/support": "v1.x-dev",
@@ -143,6 +144,10 @@
         "preference": {
             "type": "path",
             "url": "./addons/preference"
+        },
+        "profile": {
+            "type": "path",
+            "url": "./addons/profile"
         },
         "product": {
             "type": "path",

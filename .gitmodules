@@ -37,3 +37,6 @@
 [submodule "addons/wallet"]
 	path = addons/wallet
 	url = git@github.com:Wsmallnews/wallet.git
+[submodule "addons/profile"]
+	path = addons/profile
+	url = git@github.com:Wsmallnews/profile.git

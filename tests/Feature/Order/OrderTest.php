@@ -22,8 +22,8 @@ it('order 模型实现 pay 包支付契约并注册 morph 别名', function () {
         ->and((new Order)->getMorphClass())->toBe('sn_order');
 });
 
-it('支付记录关联经 sn-order.models.pay_record 配置解析（pay 包提供模型）', function () {
-    expect(Utils::getPayRecordModel())->toBe(PayRecord::class)
+it('支付记录关联经 sn-pay.models.pay_record 配置解析（pay 包提供模型）', function () {
+    expect(Wsmallnews\Pay\Support\Utils::getPayRecordModel())->toBe(PayRecord::class)
         ->and((new Order)->payRecords())->toBeInstanceOf(MorphMany::class);
 });
 

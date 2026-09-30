@@ -7,7 +7,6 @@ use Wsmallnews\Member\Models\Member;
 use Wsmallnews\Order\Enums\Order\PayStatus as OrderPayStatus;
 use Wsmallnews\Order\Models\Order;
 use Wsmallnews\Pay\Contracts\PayableInterface;
-use Wsmallnews\Pay\Contracts\PayerInterface;
 use Wsmallnews\Pay\Contracts\ThirdAdapterInterface;
 use Wsmallnews\Pay\Contracts\WalletOperator;
 use Wsmallnews\Pay\Data\NotifyPayload;
@@ -20,6 +19,7 @@ use Wsmallnews\Pay\Events\RefundSucceeded;
 use Wsmallnews\Pay\Exceptions\PayException;
 use Wsmallnews\Pay\Models\PayRecord;
 use Wsmallnews\Pay\PayManager;
+use Wsmallnews\Support\Contracts\HasSnIdentifiable;
 
 uses(RefreshDatabase::class);
 
@@ -44,12 +44,12 @@ class FakeWalletOperator implements WalletOperator
         return static::$balances[$payerId] ?? 0;
     }
 
-    public function sufficient(PayerInterface $payer, string $walletType, int $minorAmount, string $orderCurrency): bool
+    public function sufficient(HasSnIdentifiable $payer, string $walletType, int $minorAmount, string $orderCurrency): bool
     {
         return static::balance($payer->getSnId()) >= $minorAmount;
     }
 
-    public function deduct(PayerInterface $payer, string $walletType, int $minorAmount, string $orderCurrency, array $meta = []): array
+    public function deduct(HasSnIdentifiable $payer, string $walletType, int $minorAmount, string $orderCurrency, array $meta = []): array
     {
         static::$balances[$payer->getSnId()] = static::balance($payer->getSnId()) - $minorAmount;
 
@@ -61,7 +61,7 @@ class FakeWalletOperator implements WalletOperator
         ];
     }
 
-    public function credit(PayerInterface $payer, string $walletType, int $minorAmount, string $orderCurrency, array $snapshot, array $meta = []): array
+    public function credit(HasSnIdentifiable $payer, string $walletType, int $minorAmount, string $orderCurrency, array $snapshot, array $meta = []): array
     {
         static::$balances[$payer->getSnId()] = static::balance($payer->getSnId()) + $minorAmount;
 
@@ -161,12 +161,12 @@ it('订单实现 pay 包支付契约并提供币种快照', function () {
         ->and($order->getRemainPayFee())->toBe(10000);
 });
 
-it('Member 实现 PayerInterface 并具备付款便捷入口', function () {
+it('Member 以 HasSnIdentifiable 身份契约接入支付（无域包接口依赖）', function () {
     $member = createPayTestMember();
 
-    expect(Member::class)->toImplement(PayerInterface::class)
-        ->and($member->payerMask())->toBe((string) $member->getKey())
-        ->and($member->pay())->toBeInstanceOf(PayManager::class);
+    // 身份统一约束：support 的 HasSnIdentifiable（不再实现任何 pay 域接口）
+    expect(Member::class)->toImplement(HasSnIdentifiable::class)
+        ->and(app('sn-pay')->payer($member))->toBeInstanceOf(PayManager::class);
 });
 
 it('自定义渠道经 extend 注册即可用于支付（聚合平台接入约定）', function () {

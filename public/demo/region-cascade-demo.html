@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RegionCascade 级联选择组件 Demo（PC 形态）</title>
+<style>
+  :root{ --primary:#d97706; --ring:rgba(217,119,6,.30); }
+  *{ box-sizing:border-box; }
+  body{ font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; background:#f3f4f6; color:#111827; margin:0; padding:32px 16px; }
+  .wrap{ max-width:780px; margin:0 auto; display:flex; flex-direction:column; gap:24px; }
+  h1{ font-size:20px; margin:0 0 4px; }
+  p.note{ color:#6b7280; font-size:13px; margin:0; line-height:1.7; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .card h2{ font-size:15px; margin:0 0 4px; }
+  .card .desc{ font-size:12.5px; color:#6b7280; margin:0 0 14px; line-height:1.7; }
+  .badge{ display:inline-block; font-size:11px; color:#92400e; background:#fef3c7; border-radius:99px; padding:2px 8px; margin-left:8px; vertical-align:1px; font-weight:400; }
+
+  .label{ display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
+  .req{ color:#dc2626; margin-left:2px; }
+  .input-wrap{ position:relative; }
+  .input{ width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px 32px 8px 12px; font-size:14px; background:#fff; color:#111827; cursor:pointer; text-align:left; }
+  .input:focus{ outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--ring); }
+  .input.empty{ color:#9ca3af; }
+  .chev{ position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none; color:#6b7280; font-size:11px; }
+  .panel{ position:absolute; z-index:30; top:calc(100% + 6px); left:0; right:0; background:#fff; border:1px solid #e5e7eb; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.14); overflow:hidden; }
+  .tabs{ display:flex; border-bottom:1px solid #e5e7eb; overflow-x:auto; }
+  .tab{ padding:10px 12px; font-size:13px; color:#6b7280; white-space:nowrap; cursor:pointer; border-bottom:2px solid transparent; user-select:none; }
+  .tab.done{ color:#111827; }
+  .tab.done.on{ color:var(--primary); }
+  .tab.active{ color:var(--primary); font-weight:600; border-bottom-color:var(--primary); cursor:pointer; }
+  .tab.locked{ color:#d1d5db; cursor:not-allowed; }
+  .opts{ max-height:232px; overflow:auto; }
+  .opt{ padding:8px 12px; font-size:13.5px; cursor:pointer; display:flex; justify-content:space-between; }
+  .opt:hover{ background:#f9fafb; }
+  .opt.sel{ color:var(--primary); font-weight:600; }
+  .empty-tip{ padding:16px 12px; font-size:12.5px; color:#9ca3af; }
+  .hint{ font-size:12px; color:#d97706; margin-top:6px; min-height:16px; }
+  .state{ margin-top:8px; font:11.5px/1.7 ui-monospace,Consolas,monospace; background:#f9fafb; border:1px solid #f3f4f6; border-radius:6px; padding:8px 10px; color:#374151; white-space:pre-wrap; word-break:break-all; }
+  .state-title{ font:600 11px/1 system-ui; color:#9ca3af; margin-top:10px; letter-spacing:.5px; }
+
+  .toolbar{ display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+  .toolbar .sp{ flex:1; }
+  .btn{ border:1px solid #d1d5db; background:#fff; border-radius:8px; padding:5px 12px; font-size:12.5px; cursor:pointer; color:#374151; }
+  .btn:hover{ background:#f9fafb; }
+  .seg{ display:inline-flex; border:1px solid #d1d5db; border-radius:8px; overflow:hidden; }
+  .seg button{ border:0; background:#fff; padding:5px 12px; font-size:12.5px; cursor:pointer; color:#374151; }
+  .seg button.on{ background:var(--primary); color:#fff; }
+
+  select.native, input.native{ border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; font-size:13.5px; background:#fff; width:100%; }
+  select.native:focus, input.native:focus{ outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--ring); }
+  select.native:disabled{ background:#f3f4f6; color:#9ca3af; }
+  .grid4{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  @media(max-width:640px){ .grid4{ grid-template-columns:repeat(2,1fr); } }
+  .mt{ margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div>
+    <h1>RegionCascade 级联选择组件 Demo <span class="badge">PC 形态 · 零依赖静态演示</span></h1>
+    <p class="note">
+      本页为形态演示：数据为抽样（真实实现中一级选项随表单渲染注入，二~四级经包内 API 按需加载，不整树内嵌）。<br>
+      交互骨架 = 微信 / 淘宝 / 京东 App 同款「输入框 + 弹层面板逐级 Tab」模式，即旧 DistrictSelect 的升级版。
+    </p>
+  </div>
+
+  <!-- ============ 场景一：单国锁定（国内，四级） ============ -->
+  <div class="card">
+    <h2>场景一 · 单国模式（纯国内站默认形态）</h2>
+    <p class="desc">
+      国家锁定 CN（不出国家选择器），级联深度可配。演示含两个真实难点：<b>直筒子市</b>（东莞市，选市即完成）与<b>直辖市的“市辖区”层级</b>（北京市，按数据原样多一级，不做特殊逻辑）。「模拟编辑回显」验证表单回填。
+    </p>
+    <div class="toolbar">
+      <span style="font-size:12.5px;color:#6b7280">级联深度：</span>
+      <div class="seg" id="depthSeg">
+        <button data-d="4" class="on">4 级（省市区乡）</button>
+        <button data-d="3">3 级（省市区）</button>
+      </div>
+      <span class="sp"></span>
+      <button class="btn" id="btnHydrate">模拟编辑回显（广东·深圳·南山·南头街道）</button>
+      <button class="btn" id="btnClear">清空</button>
+    </div>
+    <div id="w1"></div>
+  </div>
+
+  <!-- ============ 场景二：国际模式 ============ -->
+  <div class="card">
+    <h2>场景二 · 国际模式（跨境站）</h2>
+    <p class="desc">
+      supported_countries 配多国时出现国家选择（CLDR 中文名）。切换国家后，区划层级与附加字段随该国数据/格式变化：中国=四级；美国/日本/德国=一级行政区（+邮编按国规则）；新加坡=无区划数据，仅详细地址。
+    </p>
+    <div id="w2"></div>
+  </div>
+
+  <!-- ============ 场景三：PC 结账行的多下拉（备选形态） ============ -->
+  <div class="card">
+    <h2>场景三 · 备选形态：一行四个独立下拉（京东/淘宝 PC 结账样式）</h2>
+    <p class="desc">
+      同一数据源的另一种渲染：Filament 原生 Select + live() 依赖选项即可实现（零自定义 JS）。适合后台表单；如果前台也喜欢这种形态，可同时提供（RegionSelects 工厂）。
+    </p>
+    <div class="grid4" id="rowSelects">
+      <div><label class="label">省<span class="req">*</span></label><select class="native" data-s="0"></select></div>
+      <div><label class="label">市<span class="req">*</span></label><select class="native" data-s="1"></select></div>
+      <div><label class="label">区县<span class="req">*</span></label><select class="native" data-s="2"></select></div>
+      <div><label class="label">乡镇街道</label><select class="native" data-s="3"></select></div>
+    </div>
+    <div class="mt">
+      <label class="label">详细地址<span class="req">*</span></label>
+      <input class="native" placeholder="街道、楼牌号、门牌号等">
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =============== 抽样数据（真实实现：服务端 RegionService，CN 查 sn_profile_regions，国际查 commerceguys/addressing） =============== */
+const CN = {
+  '440000': { name: '广东省', children: {
+    '440300': { name: '深圳市', children: {
+      '440305': { name: '南山区', children: {
+        '440305004': { name: '南头街道' },
+        '440305012': { name: '南山街道' },
+        '440305015': { name: '粤海街道' },
+        '440305016': { name: '沙河街道' },
+      }},
+      '440304': { name: '福田区', children: {
+        '440304001': { name: '南园街道' },
+        '440304004': { name: '园岭街道' },
+      }},
+      '440303': { name: '罗湖区', children: {
+        '440303001': { name: '桂园街道' },
+      }},
+    }},
+    '440100': { name: '广州市', children: {
+      '440106': { name: '天河区', children: { '440106001': { name: '五山街道' }, '440106011': { name: '石牌街道' } }},
+      '440104': { name: '越秀区', children: { '440104001': { name: '洪桥街道' } }},
+    }},
+    '441900': { name: '东莞市' }, /* 直筒子市：不设区县，无下级即停 */
+  }},
+  '330000': { name: '浙江省', children: {
+    '330100': { name: '杭州市', children: {
+      '330106': { name: '西湖区', children: { '330106001': { name: '北山街道' }, '330106010': { name: '翠苑街道' } }},
+      '330105': { name: '拱墅区', children: { '330105001': { name: '天水街道' } }},
+    }},
+    '330200': { name: '宁波市', children: {
+      '330203': { name: '海曙区', children: { '330203001': { name: '月湖街道' } }},
+    }},
+  }},
+  '110000': { name: '北京市', children: {
+    '110100': { name: '市辖区', children: {
+      '110101': { name: '东城区', children: { '110101001': { name: '东华门街道' } }},
+      '110105': { name: '朝阳区', children: { '110105001': { name: '朝外街道' }, '110105011': { name: '酒仙桥街道' } }},
+      '110108': { name: '海淀区', children: { '110108001': { name: '万寿路街道' } }},
+    }},
+  }},
+};
+
+const COUNTRIES = {
+  'CN': { label: '中国',   levels: ['省', '市', '区县', '乡镇街道'], data: CN, postal: null },
+  'US': { label: '美国',   levels: ['州'], data: { 'CA': { name: 'California（加利福尼亚）' }, 'NY': { name: 'New York（纽约）' }, 'TX': { name: 'Texas（得克萨斯）' }, 'WA': { name: 'Washington（华盛顿）' } }, postal: { label: '邮编 ZIP', required: true, placeholder: '如 94105（必填）' } },
+  'JP': { label: '日本',   levels: ['都道府県'], data: { '13': { name: '東京都' }, '27': { name: '大阪府' }, '23': { name: '愛知県' }, '01': { name: '北海道' } }, postal: { label: '郵便番号', required: false, placeholder: '如 163-8001（选填）' } },
+  'DE': { label: '德国',   levels: ['联邦州'], data: { 'BY': { name: 'Bayern（巴伐利亚）' }, 'BE': { name: 'Berlin（柏林）' }, 'HH': { name: 'Hamburg（汉堡）' } }, postal: { label: 'PLZ', required: true, placeholder: '如 80331（必填）' } },
+  'SG': { label: '新加坡', levels: [], data: {}, postal: null },
+};
+
+const CN_LABELS = ['省', '市', '区县', '乡镇街道'];
+const FIELD_KEYS = ['administrative_area', 'locality', 'dependent_locality', 'township'];
+
+/* =============== 单字段 Tab 级联组件 =============== */
+function createCascade(container, opts) {
+  const cfg = Object.assign({ depth: 4, intl: false }, opts);
+  let country = 'CN', chain = [], active = 0, open = false, hint = '';
+
+  container.innerHTML = `
+    ${cfg.intl ? `
+    <div style="margin-bottom:12px">
+      <label class="label">国家/地区<span class="req">*</span></label>
+      <select class="native" data-country></select>
+    </div>` : ''}
+    <div data-regionfield>
+      <label class="label">所在地区<span class="req">*</span></label>
+      <div class="input-wrap">
+        <button type="button" class="input empty" data-input></button>
+        <span class="chev">▼</span>
+        <div class="panel" data-panel hidden>
+          <div class="tabs" data-tabs></div>
+          <div class="opts" data-opts></div>
+        </div>
+      </div>
+      <div class="hint" data-hint></div>
+    </div>
+    <div data-postal style="display:none">
+      <div class="mt" style="margin-bottom:0">
+        <label class="label" data-postal-label>邮编</label>
+        <input class="native" data-postal-input>
+      </div>
+    </div>
+    <div class="state-title">表单 STATE（字段持有的结构化值：code + 名称成对）</div>
+    <div class="state" data-state></div>
+  `;
+
+  const $ = (sel) => container.querySelector(sel);
+  const inputEl = $('[data-input]'), panelEl = $('[data-panel]'),
+        tabsEl = $('[data-tabs]'), optsEl = $('[data-opts]'), hintEl = $('[data-hint]'),
+        stateEl = $('[data-state]'), regionField = $('[data-regionfield]'),
+        countryEl = $('[data-country]'), postalWrap = $('[data-postal]'),
+        postalLabel = $('[data-postal-label]'), postalInput = $('[data-postal-input]');
+
+  const levels = () => cfg.intl ? COUNTRIES[country].levels : CN_LABELS.slice(0, cfg.depth);
+  const rootData = () => cfg.intl ? COUNTRIES[country].data : CN;
+
+  function childrenOf(levelIdx) {
+    let list = rootData();
+    for (let i = 0; i < levelIdx; i++) list = (list[chain[i].code] || {}).children || null;
+    return list;
+  }
+
+  function render() {
+    const lv = levels(), depth = lv.length;
+
+    /* 输入框回显 */
+    const txt = chain.map(n => n.name).join('　');
+    inputEl.textContent = txt || ('请选择' + lv.join(' / '));
+    inputEl.classList.toggle('empty', !chain.length);
+
+    /* Tab 行 */
+    tabsEl.innerHTML = '';
+    lv.forEach((lbl, i) => {
+      const t = document.createElement('div');
+      if (i < chain.length) {
+        t.className = 'tab done' + (i === active ? ' on' : '');
+        t.textContent = chain[i].name;
+        t.onclick = () => { active = i; open = true; render(); };
+      } else if (i === chain.length) {
+        t.className = 'tab active';
+        t.textContent = '请选择' + lbl;
+        t.onclick = () => { active = i; render(); };
+      } else {
+        t.className = 'tab locked';
+        t.textContent = '请选择' + lbl;
+      }
+      tabsEl.appendChild(t);
+    });
+
+    /* 选项列表 */
+    if (chain.length === depth) {
+      /* 全部选完：展示最后一级的可切换列表 */
+      const list = childrenOf(depth - 1) || {};
+      renderOpts(list, depth - 1);
+    } else {
+      const list = childrenOf(active) || {};
+      renderOpts(list, active);
+    }
+
+    panelEl.hidden = !open;
+    hintEl.textContent = hint;
+
+    /* 邮编块（国际模式按国家格式规则显隐） */
+    const pc = cfg.intl ? COUNTRIES[country].postal : null;
+    postalWrap.style.display = pc ? '' : 'none';
+    if (pc) {
+      postalLabel.innerHTML = pc.label + (pc.required ? '<span class="req">*</span>' : '');
+      postalInput.placeholder = pc.placeholder || '';
+    }
+
+    /* 无区划国家：隐藏区划字段 */
+    regionField.style.display = (cfg.intl && levels().length === 0) ? 'none' : '';
+
+    /* State 摘要 */
+    const state = { country_code: country };
+    chain.forEach((n, i) => { if (FIELD_KEYS[i]) state[FIELD_KEYS[i]] = [n.code, n.name]; });
+    if (cfg.intl && postalInput.value) state.postal_code = postalInput.value;
+    stateEl.textContent = JSON.stringify(state, null, 2);
+  }
+
+  function renderOpts(list, levelIdx) {
+    optsEl.innerHTML = '';
+    const keys = Object.keys(list);
+    if (!keys.length) {
+      const tip = document.createElement('div');
+      tip.className = 'empty-tip';
+      tip.textContent = '无下级区划数据。';
+      optsEl.appendChild(tip);
+      return;
+    }
+    keys.forEach(code => {
+      const node = list[code];
+      const row = document.createElement('div');
+      const sel = chain[levelIdx] && chain[levelIdx].code === code;
+      row.className = 'opt' + (sel ? ' sel' : '');
+      row.innerHTML = `<span>${node.name}</span>${sel ? '<span>✓</span>' : ''}`;
+      row.onclick = () => pick(levelIdx, code, node);
+      optsEl.appendChild(row);
+    });
+  }
+
+  function pick(i, code, node) {
+    chain = chain.slice(0, i).concat([{ code, name: node.name }]);
+    hint = '';
+    const lv = levels(), depth = lv.length;
+    const hasChildren = node.children && Object.keys(node.children).length;
+    if (hasChildren && i + 1 < depth) {
+      active = i + 1;
+    } else {
+      if (!hasChildren && i + 1 < depth) {
+        hint = `所选${lv[i]}不设下级区划，选择到此完成，剩余层级请写入详细地址。`;
+      }
+      open = false;
+      active = Math.min(i, depth - 1);
+    }
+    render();
+  }
+
+  inputEl.onclick = () => {
+    open = !open;
+    const lv = levels();
+    if (open) active = Math.min(chain.length, lv.length - 1);
+    render();
+  };
+  /* 外部关闭用 mousedown：click 会先触发重渲染、事件 target 脱离 DOM，
+     contains(分离节点)=false 会把“面板内点击”误判为外部点击而关面板 */
+  document.addEventListener('mousedown', (e) => {
+    if (!container.contains(e.target) && open) { open = false; render(); }
+  });
+
+  if (cfg.intl) {
+    Object.keys(COUNTRIES).forEach(code => {
+      const o = document.createElement('option');
+      o.value = code; o.textContent = COUNTRIES[code].label;
+      countryEl.appendChild(o);
+    });
+    countryEl.onchange = () => { country = countryEl.value; chain = []; active = 0; open = false; hint = ''; render(); };
+  }
+  postalInput.oninput = render;
+
+  render();
+
+  /* 对外 API（供 demo 工具条调用） */
+  return {
+    setChainByCodes(codes) {
+      chain = []; let list = rootData();
+      for (const code of codes) {
+        const node = list && list[code];
+        if (!node) break;
+        chain.push({ code, name: node.name });
+        list = node.children || null;
+      }
+      active = Math.min(chain.length, levels().length - 1);
+      hint = '';
+      render();
+    },
+    clear() { chain = []; active = 0; open = false; hint = ''; render(); },
+  };
+}
+
+/* =============== 场景一 =============== */
+let w1 = createCascade(document.getElementById('w1'), { depth: 4 });
+document.querySelectorAll('#depthSeg button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#depthSeg button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    w1 = createCascade(document.getElementById('w1'), { depth: +btn.dataset.d });
+  };
+});
+document.getElementById('btnHydrate').onclick = () =>
+  w1.setChainByCodes(['440000', '440300', '440305', '440305004']);
+document.getElementById('btnClear').onclick = () => w1.clear();
+
+/* =============== 场景二 =============== */
+createCascade(document.getElementById('w2'), { depth: 4, intl: true });
+
+/* =============== 场景三：行下拉 =============== */
+(function rowSelects() {
+  const sels = [...document.querySelectorAll('#rowSelects select')];
+  const PH = ['请选择省', '请选择市', '请选择区县', '请选择乡镇（选填）'];
+  const vals = [null, null, null, null];
+
+  function dataAt(i) {
+    let list = CN;
+    for (let k = 0; k < i; k++) {
+      if (!vals[k]) return null;
+      list = (list[vals[k]] || {}).children || null;
+      if (!list) return null;
+    }
+    return list;
+  }
+  function fill(i) {
+    const sel = sels[i];
+    sel.innerHTML = '';
+    const ph = document.createElement('option');
+    ph.value = ''; ph.textContent = PH[i];
+    sel.appendChild(ph);
+    const list = dataAt(i);
+    sel.disabled = !list;
+    if (!list) return;
+    Object.keys(list).forEach(code => {
+      const o = document.createElement('option');
+      o.value = code; o.textContent = list[code].name;
+      sel.appendChild(o);
+    });
+    sel.value = vals[i] || '';
+  }
+  sels.forEach((sel, i) => {
+    sel.onchange = () => {
+      vals[i] = sel.value || null;
+      for (let k = i + 1; k < 4; k++) vals[k] = null;
+      for (let k = i + 1; k < 4; k++) fill(k);
+    };
+  });
+  for (let i = 0; i < 4; i++) fill(i);
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 <?php
 
 use Cknow\Money\Money as CknowMoney;
+use Filament\Support\Colors\Color;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Number;
 use Wsmallnews\Order\Models\Order;
@@ -211,4 +212,31 @@ it('商品价格 cast 币种列可空回落站点默认', function () {
 it('MoneyManager 可经容器解析（sn_money 与 app 等价）', function () {
     expect(sn_money())->toBeInstanceOf(MoneyManager::class)
         ->and(app(MoneyManager::class))->toBeInstanceOf(MoneyManager::class);
+});
+
+it('formatParts 拆分返回符号与千分位金额（不带符号）', function () {
+    $parts = sn_money()->formatParts(1380000);
+    expect($parts)->toBe(['symbol' => '¥', 'amount' => '13,800.00']);
+
+    // 小数金额与指定币种
+    expect(sn_money()->formatParts(13806))->toBe(['symbol' => '¥', 'amount' => '138.06'])
+        ->and(sn_money()->formatParts(13800, 'USD'))->toBe(['symbol' => 'US$', 'amount' => '138.00']);
+
+    // Money 对象透传
+    expect(sn_money()->formatParts(sn_money()->fromMinor(500)))->toBe(['symbol' => '¥', 'amount' => '5.00']);
+});
+
+it('sn_text_color 色名预置类与动态色变量双通道', function () {
+    // 色名 → 完整 Tailwind 类（编译期可见）
+    expect(sn_text_color())->toBe(['class' => 'text-primary-600 dark:text-primary-400', 'style' => ''])
+        ->and(sn_text_color('danger')['class'])->toBe('text-danger-600 dark:text-danger-400');
+
+    // hex / 色板数组 → 动态类 + 变量
+    $hex = sn_text_color('#f43f5e');
+    expect($hex['class'])->toBe('sn-text-dynamic')
+        ->and($hex['style'])->toContain('--sn-color-text:')
+        ->and(sn_text_color(Color::Rose)['class'])->toBe('sn-text-dynamic');
+
+    // 未注册色名 → 回退 primary
+    expect(sn_text_color('NotRegistered')['class'])->toBe('text-primary-600 dark:text-primary-400');
 });

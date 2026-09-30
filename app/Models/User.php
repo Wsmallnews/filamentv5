@@ -27,6 +27,7 @@ use Wsmallnews\Preference\Models\Concerns\Preferencer;
 use Wsmallnews\Preference\Models\Concerns\Preferencer\Follower;
 use Wsmallnews\Preference\Models\Concerns\Preferencer\Liker;
 use Wsmallnews\Preference\Models\Concerns\Preferencer\Viewer;
+use Wsmallnews\Profile\Models\Concerns\Addressable;
 use Wsmallnews\Support\Concerns\UserIdentifiable;
 use Wsmallnews\Support\Contracts\HasSnIdentifiable;
 use Wsmallnews\User\Models\Concerns\TwoFactorAuthenticatable;
@@ -37,16 +38,18 @@ use Wsmallnews\User\Userable;
 class User extends Authenticatable implements FilamentUser, HasAppAuthentication, HasAppAuthenticationRecovery, HasAvatar, HasEmailAuthentication, HasName, HasSnIdentifiable, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use BeReplyer;
+    use Addressable;
 
+    use BeReplyer;
     use Commenter;
     use Follower;
     use HasActivity;
-    use HasFactory, Notifiable;
+    use HasFactory;
     use InteractsWithAppAuthentication;
     use InteractsWithAppAuthenticationRecovery;
     use InteractsWithEmailAuthentication;
     use Liker;
+    use Notifiable;
     use Preferencer;
     use TwoFactorAuthenticatable;
     use Userable;

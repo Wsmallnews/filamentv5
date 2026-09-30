@@ -24,6 +24,9 @@
 /* wsmallnews/pay */
 @import "../../vendor/wsmallnews/pay/resources/css/index.css";
 
+/* wsmallnews/profile */
+@import "../../vendor/wsmallnews/profile/resources/css/index.css";
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';

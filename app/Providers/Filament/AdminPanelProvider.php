@@ -26,6 +26,7 @@ use Wsmallnews\Member\MemberPlugin;
 use Wsmallnews\Order\OrderPlugin;
 use Wsmallnews\Pay\PayPlugin;
 use Wsmallnews\Product\ProductPlugin;
+use Wsmallnews\Profile\ProfilePlugin;
 use Wsmallnews\Shop\ShopPlugin;
 use Wsmallnews\Support\Filament\Resources\ActivityLogs\ActivityLogResource;
 use Wsmallnews\Support\Filament\Resources\ScheduledTasks\ScheduledTaskResource;
@@ -73,6 +74,7 @@ class AdminPanelProvider extends PanelProvider
                 OrderPlugin::make(),
                 PayPlugin::make(),
                 ProductPlugin::make(),
+                ProfilePlugin::make(),
                 ShopPlugin::make(),
                 UserPlugin::make(),
                 CommentPlugin::make(),

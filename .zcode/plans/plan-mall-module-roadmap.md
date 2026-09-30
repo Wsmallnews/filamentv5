@@ -1,8 +1,8 @@
 # 商城模块（shop/product/order/pay）总体路线图
 
-> 状态：阶段 A（货币基建）、阶段 B（pay 重构）已完成；阶段 C（order 管道修复）待开工。
+> 状态：阶段 A（货币基建）、阶段 B（pay 重构）、阶段 C（order 管道重排）已完成；下一步阶段 D（shop 前台闭环收尾）。
 > 本文档是商城轨的**唯一计划基准**：已完成内容、核心规范、剩余断点、后续阶段、决策记录。后续开发以本文档为准，完成后更新对应章节的状态标记。
-> 关联文档：`tasks/商城模块/商城逻辑梳理文档.md`（需求原始输入）、`.ai/rules/addons-src.md`（货币/模块依赖规则已固化）。
+> 关联文档：`tasks/商城模块/商城逻辑梳理文档.md`（需求原始输入）、`.ai/rules/addons-src.md`（货币/模块依赖规则已固化）、`.zcode/plans/plan-pay-roadmap.md`（pay 包专项路线）。
 
 ---
 
@@ -20,11 +20,11 @@
    ↓ 消费者：pay_records 表、支付金额、退款分摊
 阶段 B pay 通用支付扩展包重构（✅ 2026-09 完成）
    ↓ 消费者：PayableInterface 契约、金额口径
-阶段 C order 管道修复 + buyer 契约 + shop 接线（⬜ 待开工，下一步）
+阶段 C order 管道重排 + 场景注册表 + shop 接线（✅ 2026-09-25 完成）
    ↓
-阶段 D 端到端闭环验证（确认页→下单→支付→回调→状态流转）
+阶段 D 端到端闭环收尾（pay-finish 结果页/收银台前端/超时关单）（⬜ 下一步）
    ↓
-P1 分类闭环 / P2 后台管理与库存 / P3 购物车·跨境扩展·多租户开启
+P1 分类闭环 / P2 后台管理与库存扩展 / P3 购物车·跨境扩展·多租户开启
 ```
 
 ---
@@ -95,11 +95,47 @@ P1 分类闭环 / P2 后台管理与库存 / P3 购物车·跨境扩展·多租�
 
 ---
 
-## 四、阶段 C：order 管道修复 + buyer 契约 + shop 接线（⬜ 下一步，待确认开工）
+## 四、阶段 C：order 管道重排 + 场景注册表 + shop 接线（✅ 2026-09-25 完成）
 
-> 目标：恢复 main 分支曾经走通的"选品→确认→下单"链路，全部按新货币/pay 规范重写，端到端有测试兜底。
+> 交付形态与原计划有架构升级（管道归属重排 + 扩展机制），C1-C6 断点全部修复，端到端测试兜底。
 
-### C1 Get 管道断点（一调即崩）
+### 交付架构（重排后）
+
+```
+support   Rocket 基类修复（原三个 trait 文件从未迁移、类加载即 fatal → 直接实现 ArrayAccess/JsonSerializable）
+order     纯引擎：OrderCreate（fetch/check/calc/summary/creating 五阶段管道执行器）
+          OrderPipes 注册表（scene=orders.type + stage + key 锚点，after/before/replace/remove/prepend/append）
+          Order 场景管理器（registerShortcut(type, class)；退款/失效经 resolveShortcut 反查）
+          Pipes/Common/*（通用管道）+ CommonPipes 聚合器 + Shortcuts/Base（配方基类，含 SavesOrderItems）
+          RefundSucceeded 监听 → OrderOperate::refunded()（退款状态流转 + 场景补偿管道骨架）
+          依赖：pay + support（不再依赖 product/user）
+product   商品域管道：Pipes/{Fetch,Check,Calc,Summary}/Product（字段名修正 + 整数分计价）
+          require order（新增）；original_price 划线原价列（products + variants，双侧迁移同步）
+shop      Order/Shortcuts/ProductShortcut（type='product' 配方）+ 确认页接 sn-order::components.confirm
+legacy    order/legacy/ 存档被移除的管道（LimitBuy/Money/Score + 原 Shop.php，限购/余额抵扣/库存留待扩展包）
+```
+
+### 关键决策落地（详见会话决策记录 19-27）
+
+- C1/C2 全部断点修复：`->show()`→`->up()`、attributes 管道移除、`sku_type→spec_type`、`convert_num→stock_convert_num`、`product_sku_text→product_spec_text`、`mainUrl→image`
+- C3 金额管道全面整数分重写：`radarAdditionMinor`、JSON 字段集 `键=>分`、模型赋值 `fromMinor`、`fields_infos` 十进制串仅展示
+- BuyerInterface **整体删除**（morph 用 Laravel 原生；buyer = ?Model）——接口负担归零
+- 退款 payload 预留 item 级结构（售后扩展包将来填充 refund_items）
+- OrderAction 操作人参数化（?Model $operator，缺省 system）
+- price_change 定时改价修复：SPU + 多规格变体统一改价
+
+### C6 端到端验收（✅）
+
+`tests/Feature/Order/OrderPipelineTest.php` 11 用例：场景注册表反查、OrderPipes 六种插拔、试算整数分断言、落单全字段断言、多商品合计、库存拒绝（含多单位换算）、**落单→余额支付→paid→部分退款 hasrefund→全额 refunded→快照回款**、确认组件渲染。全仓 408 用例 1431 断言全绿。
+
+### 原 C4 决策点的最终拍板
+
+1. original_price：加列（products + variants，可空，空=无划线价）
+2. 限购：移除，规划独立扩展包（legacy 存档）
+3. BuyerInterface：删除（见上）
+4. 库存：移除占位管道，规划库存销量扩展包（legacy 存档）
+
+### C1 Get 管道断点（一调即崩）【✅ 已修复，留档】
 
 - `Pipes/Shop/Get/Product.php:25`：`->show()` → Product 模型只有 `scopeUp`（补 scopeShow 或改 scopeUp，语义上=可购买态 Up|Hidden）
 - 同文件 `with(['variants', 'attributes' => ...])`：Product 无 `attributes()` 关联（只有 specs）——attribute 体系已搁置（用户决策），改为 `with(['variants'])` 并移除 ProductAttribute 相关管道的注册
@@ -210,6 +246,18 @@ Feature 测试：创建商品（含变体+价格）→ 构造 relate_items → O
 16. **unit（单位库）不建独立资源页**：Select 的 createOptionForm 内联创建；产品表存 label 不存外键；暂留 product 包（models 映射可替换）
 17. **config 以包内为最全基准**（主仓发布版落后无所谓）；迁移改结构直接改原迁移 + stub 双侧 + migrate:fresh
 18. **多租户**：扩展包必须支持（team_id/scope 已备），环境暂单租户；第二多租户 panel 可与 admin 并存
+19. **管道归属**（阶段 C）：商品域管道归 product 包（product require order），场景配方归消费模块（shop 的 ProductShortcut），通用管道留 order 的 Pipes/Common；契约（PipeInterface + OrderRocket）留 order
+20. **场景标识 = orders.type 值**：OrderPipes 注册表按 `scene(type) + stage + key` 寻址；配方注册 `Order::registerShortcut(type, class)`，退款/失效经 type 反查（存 type 不存类名）
+21. **订单类型正交维度**：type 只承载"计价/创建配方"差异（小闭合集）；履约方式（快递/自提/外送/核销）独立字段；营销玩法（团购等）走 OrderPipes 插管道；商品形态归商品域；门店维度留待 store 包（scope 方案待议）
+22. **退款/失效统一管道化**：同一 Shortcut 承载场景全生命周期；售后（aftersale）是独立状态机不进 shortcut，交汇于退款执行（RefundSucceeded 事件），item 级 refund payload 结构已预留
+23. **BuyerInterface 删除**：buyer = ?Model（morph 原生）；「接口下沉判据」——纯身份/展示能力归 support 契约，域知识能力不上公共模型（消费方包加关系或域包 adapter）
+24. **公共身份模型（User/Member 包内模型）保持零域依赖**：use/implements 只允许 support + 显式声明的轻增强；宿主 App\User 是自由组装层不受限（PayerInterface 下沉 support 已列入 pay 路线 T3）
+25. **Rocket 不引入 yansongda/artful**：自有 100 行实现足够（模式参考）；三个缺失 trait 以直接实现接口替代
+26. **充值不走 order**：wallet Recharge 直连 PayableInterface（单标的直付判据）；会员购买看形态（套餐直付直连 / 商品化 SKU 走 order）
+27. **限购/余额抵扣/库存均规划独立扩展包**：本期移除占位管道（order/legacy/ 存档），落地后经 OrderPipes 注册表插回
+28. **配方管道清单用显式组合，不用模板方法**（2026-09-26 定稿）：Shortcut 基类不做 get/钩子双层隐藏拼接——继承者直接实现接口方法，自己 `array_merge(CommonPipes::xxx(), 业务段)`。理由：清单单一事实源彻底留在配方类（与决策 #20 引擎不注入的原则自洽）；配方是小闭合集 + 单维护者，「忘 merge 通用段」风险由端到端测试金额断言兜底，不需要 final 语言层强制。Base 收缩为薄基类（SavesOrderItems 载体 + 范式注释，abstract）
+29. **fields_infos 契约与金额展示分工**（2026-09-26）：FieldInfo 双职责（make 填充 / sorted+render 解析，text/desc 存翻译键、amount 存整数分、order_column 排序锚、high_light→sn-primary-text+bold / sn-neutral-text）；着重显示用 `<x-sn-support::amount>` 组件（色名双通道 sn_text_color），行内循环用 FieldInfo/render 拼串；`formatParts()` 拆分符号与金额。规范沉淀 `.ai/rules/amount-display.md`
+30. **身份统一约束 + PayerInterface 删除**（2026-09-27）：所有身份角色（order 的 buyer / pay 的 payer）统一约束为 support 的 `HasSnIdentifiable`；PayerInterface + UserPayerable 删除（payerMask 内联 PayOperator::payerMark，WalletOperator 等签名同步）；**member 首次达成零域包接口依赖**（composer 仅 support+profile+comment+preference 声明）。域包对用户模型约束公式：HasSnIdentifiable（身份）+ morph 原生（引用）+ 域包自己查数据（forBuyer scope 预留）+ 域包自己算展示策略。匿名购买将来经 GuestBuyer 模型（实现 HasSnIdentifiable，参照 Shopify 游客 Customer 模式）接入，收编合并机制届时再议——本期只铺接口统一，不建表
 
 ---
 

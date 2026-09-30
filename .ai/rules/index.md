@@ -5,6 +5,8 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | addons/*/src/** | .ai/rules/addons-src.md |
+| addons/*/resources/views/**, addons/order/src/**, addons/product/src/** | .ai/rules/amount-display.md |
+| addons/*/resources/views/** | .ai/rules/empty-state.md |
 | addons/*/src/** | .ai/rules/composition.md |
 | addons/*/config/*.php | .ai/rules/config.md |
 | addons/*/resources/views/** | .ai/rules/container-queries.md |
@@ -16,7 +18,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | lang/** | .ai/rules/lang.md |
 | addons/*/src/Livewire/** | .ai/rules/livewire.md |
 | database/migrations/**, addons/*/database/migrations/**, tests/** | .ai/rules/migrations.md |
-| addons/cms/src/Models/** | .ai/rules/models.md |
+| addons/*/src/Models/** | .ai/rules/models.md |
 | addons/support/resources/css/** | .ai/rules/resources-css.md |
 | addons/support/src/Features/Search/** | .ai/rules/search.md |
 | addons/cms/src/** | .ai/rules/src.md |
