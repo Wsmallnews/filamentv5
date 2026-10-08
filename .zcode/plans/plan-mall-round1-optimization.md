@@ -230,9 +230,28 @@ OrderPipes::scene('product')->stage(Stage::CREATING)->prepend('stock-lock', Lock
 37. **注册表类参照 support 归位 Features 子系统目录，门面名 = 注册表类名**（2026-10-08 用户拍板）：`Wsmallnews\Order\Order` → `Wsmallnews\Order\Features\Shortcuts\ShortcutRegistry`，门面 `Facades\Order` → `Facades\ShortcutRegistry`（对齐 support `Facades\CompositionRegistry` → `Features\Composition\CompositionRegistry` 最新范式；Feed/Search 等老域短名门面不效仿）；OrderManager 名字保留给将来别的用途。
 38. **Livewire 组件公开属性驼峰，管道/接口参数下划线**（2026-10-08 沉淀）：`$addressId` / `$relateItems`；传参时 `'address_id' => $this->addressId`。
 
-## 六、验证基准
+## 六、验证基准与结果
 
-- T1/T2：`php artisan test --compact tests/Feature/Order/` + support/product 相关用例；
-- T3/T4：真机强刷（CSS 重建后浏览器缓存）+ 开发库商品列表/详情页目测；
-- 每步 `vendor/bin/pint --dirty --format agent`；
-- 全部完成后请用户跑完整套件 `php artisan test --compact`。
+### 自动化（2026-10-08 全绿）
+
+- 全量套件 427 passed / 66 skipped（既有跳过项）、pint 通过；order 专项 25 用例含 ShortcutRegistry 迁移后回归。
+
+### 真机浏览器验证（2026-10-08，http://filamentv5.test，IAB）
+
+| 验证项 | 结果 |
+|---|---|
+| 产品列表（/shop/products）：网格 sn-gap 24px、sn-container sn-padded 容器皮、无图卡片灰色占位+图标、5 列宽松布局 | ✅ 通过（DOM 计算值 + 截图确认） |
+| 详情轮播圆角（商品 5）：swiper 主图/缩略条 `rounded-(--sn-radius-card)` 计算值 6px | ✅ |
+| step-number 连点：初始值 1（非 0）、连点三次加号 2→3→4（拼接 bug 消失）、减号正常 | ✅ |
+| 规格选择（浅焙+250g）：chooseSpec 服务端请求、选中态 solid badge、「当前规格」提示、价格刷新 | ✅ |
+| 立即购买：sn-product-buy → 宿主跳转确认页（relate_items 完整携带） | ✅ |
+| 确认页：清单带规格快照（浅焙；250g）、金额汇总、**订单备注输入框渲染** | ✅ |
+| 落单：备注「第二次验证：豆子磨粉」完整落库 orders.remark、状态 unpaid、buyer member:3 | ✅ |
+| sn-order-created → 宿主跳转收银台（order_sn 携带）、收银台金额渲染 | ✅ |
+
+### 真机发现的新问题（前次阶段 C 遗留，未浏览器验证过的代码）
+
+**F1（P0，待修）：嵌套 Livewire 组件的内联 Alpine 脚本不生效**——order 包 confirm 视图的 `@once` 脚本注册 `Alpine.data('snOrderConfirm')`，但嵌套组件经 Livewire 水合后 x-data 元素未被 Alpine 初始化（`_x_dataKeeper` 为空）→ **「提交订单」按钮的 `@click="create"` 在真实浏览器中无效**（自动化测试走 Livewire 层不经过 Alpine，故未暴露）。页面级（shop 包页面视图）同模式脚本正常（snShopDetail / snShopOrderConfirm 的 `$wire.on` 均工作）；**收银台的 snPayMethods（pay 包嵌套组件，choose 选择支付方式）大概率同病**，阶段 D 收银台前端消费时一并处理。
+**修复方向**（二选一，实施时定）：① 提交按钮改 `wire:click` 直调服务端方法（把 `set type=create` 与 `create()` 合并为一个 submit 动作），彻底不依赖嵌套组件内联 Alpine；② 内联脚本提升到宿主页面视图（shop 页面级脚本已证明可靠）。
+
+**遗留演示数据**：dev 库新增两笔未支付测试订单（sn 202602094511025465003000、202602112368530000030000，member 3，¥45 咖啡豆），留作收银台/订单管理联调样例，不需要可删。
