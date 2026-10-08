@@ -2,7 +2,7 @@
 
 > 状态：阶段 A（货币基建）、阶段 B（pay 重构）、阶段 C（order 管道重排）已完成；下一步阶段 D（shop 前台闭环收尾）。
 > 本文档是商城轨的**唯一计划基准**：已完成内容、核心规范、剩余断点、后续阶段、决策记录。后续开发以本文档为准，完成后更新对应章节的状态标记。
-> 关联文档：`tasks/商城模块/商城逻辑梳理文档.md`（需求原始输入）、`.ai/rules/addons-src.md`（货币/模块依赖规则已固化）、`.zcode/plans/plan-pay-roadmap.md`（pay 包专项路线）。
+> 关联文档：`tasks/商城模块/商城逻辑梳理文档.md`（需求原始输入）、`.ai/rules/addons-src.md`（货币/模块依赖规则已固化）、`.zcode/plans/plan-pay-roadmap.md`（pay 包专项路线）、`.zcode/plans/plan-mall-round1-optimization.md`（第一轮整体优化：组件/事件/附加属性与媒体库方案，2026-10-08）。
 
 ---
 

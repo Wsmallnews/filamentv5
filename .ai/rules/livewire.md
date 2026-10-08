@@ -8,13 +8,14 @@ paths:
 ## Livewire 组件分层：Components/ 为内嵌组件由调用方传 scopeable，目录外为整页组件走 Base 模块 scope
 Livewire 目录分层约定：Components/ 目录下全部是内嵌组件——不可直接访问（不配路由），所需 scopeable 参数一律由调用处显式传入（blade 里 :scope-type/:scope-id 或父组件传递），组件自身不读模块默认 scope；Components/ 之外的类都是整页组件——必须配置路由直接访问，默认继承模块 Base（cms 的 Base 覆写了 getScopeable()/getScopeType()/getScopeId() 返回 Utils::getScopeable() 即 config scopeables 的 main 默认实例，差异实例如 footer 经 Utils::getScopeable('footer')），页面级查询直接用 $this->getScopeable()。新建组件时按此判断放哪个目录：要传参内嵌 → Components/；要路由直达 → 目录外 + Base 子类 + 路由注册。
 
-## CanBeContained 视图按子元素形态选容器模式：内容贴卡型边距在容器，行式列表型边距在行
-内嵌组件 use `Wsmallnews\Support\Livewire\Concerns\CanBeContained`（`public bool $contained = true`）后，视图用 `@class` 写「恒定基线 + 条件卡片」：基线项（数组无键项）恒渲染布局类，`=> $contained` 项按需追加卡片外观。`contained=false` 只去掉卡片皮（sn-container），组件内部结构和行边距原样保留。按形态二选一：
+## CanBeContained 视图按子元素形态选容器模式：内容贴卡型边距在容器，行式列表型边距在行，网格卡片型容器只穿皮
+内嵌组件 use `Wsmallnews\Support\Livewire\Concerns\CanBeContained`（`public bool $contained = true`）后，视图用 `@class` 写「恒定基线 + 条件卡片」：基线项（数组无键项）恒渲染布局类，`=> $contained` 项按需追加卡片外观。`contained=false` 只去掉卡片皮（sn-container），组件内部结构和行边距原样保留。所有 `src/Livewire/Components` 下可被外部引用的组件都必须遵循此模式（规范参考：product 包 products 组件）。按形态三选一：
 
 - **内容贴卡型**（Post、Comments）：子元素是标题/正文/按钮等，sn-* 文字类不带 margin → 基线 `w-full flex flex-col sn-gap` + 条件 `sn-container sn-padded`。padded 管内容与卡片边缘的间距，flex gap 管子元素互相间距。
 - **行式列表型**（posts、related-posts、search-results）：行的 `sn-padded`/`sn-px` 是行自身的边距语义（**无条件保留，嵌套时也在**），`sn-list-header` 自带 `px-(--sn-space-card)` + border-b → 容器只要条件 `sn-container overflow-hidden`（卡片皮 + 裁 divide-y 分割线圆角，**禁加 sn-padded**——会与行/header 双重缩进且分割线断开）。
+- **网格卡片型**（**products，规范参考**）：子项是自带卡片外观的网格项（商品卡自身是 sn-container），网格本身即布局 → 基线 `w-full grid ... sn-gap` + 条件 `sn-container sn-padded`（网格用 sn-gap 消费页面间距令牌，容器皮只负责把整组网格框成卡片；空态经 `<x-sn-support::empty :contained>` 同语义透传）。
 
-判据：纯内容块 → 内容贴卡型；带行/工具条的列表 → 行式列表型。页面骨架组件（Navigation/Footer/Breadcrumb）与无自有卡片外观的组件（分类树、同级导航）不适用 CanBeContained。注意 `@class` 数组无键项是恒定基线不是条件回退，别把基线类写成 `=> ! $contained` 互斥分支。
+判据：纯内容块 → 内容贴卡型；带行/工具条的列表 → 行式列表型；卡片网格/瀑布流 → 网格卡片型。页面骨架组件（Navigation/Footer/Breadcrumb）与无自有卡片外观的组件（分类树、同级导航）不适用 CanBeContained。注意 `@class` 数组无键项是恒定基线不是条件回退，别把基线类写成 `=> ! $contained` 互斥分支。
 
 ## 跨模块导航复用：直接嵌入 cms 导航组件 + :module 配置寻址（视图副本是最后退路）
 复用 cms 导航（shop 已落地）：调用方在自己的页面容器里直接 `<livewire:sn-cms::components.navigation.navigation :scope-type :scope-id :module="app(本包Plugin)->getId()" />`——**同一个组件、同一套视图与 sn-cms-nav CSS**。组件经 `Wsmallnews\Support\Livewire\Concerns\HasModuleContext`（通用能力，沉淀在 support） 解析 module 上下文：navigationConfig/moduleConfig 优先读消费模块的 config（{module}.navigation / themes / search / guard 节），moduleRoute 走 {module}.routes.name 前缀，未声明时回落组件所有方默认——两个模块的导航形态互不影响。Brothers 同法接入。Footer 为 cms 自用组件（不复用）：其 scopeable 由调用处在嵌 入处解析（Utils::getScopeable('footer')）后显式传入，组件内部禁止解析 scope——内嵌组件的数据上下文（scope/module）一律经 props 注入，此为通用原则。primary 风格文字为白色，容器必须给深色背景（sn-primary-bg）。theme-view prop 是视图覆盖的最后退路（仅在复用视图确实无法满足时才做自定义副本）。

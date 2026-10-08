@@ -7,6 +7,7 @@ use Wsmallnews\Member\Models\Member;
 use Wsmallnews\Order\Contracts\Shortcuts\ShortcutInterface;
 use Wsmallnews\Order\Exceptions\OrderCreateException;
 use Wsmallnews\Order\Exceptions\OrderException;
+use Wsmallnews\Order\Features\Shortcuts\ShortcutRegistry;
 use Wsmallnews\Order\Models\Order;
 use Wsmallnews\Order\Models\OrderAction;
 use Wsmallnews\Order\OrderCreate;
@@ -155,7 +156,7 @@ function bindPipelineWallet(): void
 */
 
 it('product 类型解析到商城配方（注册表反查）', function () {
-    $shortcut = app(Wsmallnews\Order\Order::class)->shortcut('product');
+    $shortcut = app(ShortcutRegistry::class)->shortcut('product');
 
     expect($shortcut)->toBeInstanceOf(ProductShortcut::class);
     expect(is_subclass_of($shortcut, ShortcutInterface::class))->toBeTrue();
@@ -177,11 +178,11 @@ it('product 类型解析到商城配方（注册表反查）', function () {
         'remain_pay_fee' => sn_money()->fromMinor(100),
     ]);
 
-    expect(app(Wsmallnews\Order\Order::class)->resolveShortcut($order))->toBeInstanceOf(ProductShortcut::class);
+    expect(app(ShortcutRegistry::class)->resolveShortcut($order))->toBeInstanceOf(ProductShortcut::class);
 });
 
 it('未注册的订单类型反查配方抛异常', function () {
-    app(Wsmallnews\Order\Order::class)->shortcut('not-exists');
+    app(ShortcutRegistry::class)->shortcut('not-exists');
 })->throws(OrderException::class, 'not registered');
 
 it('OrderPipes 注册表：按锚点插拔管道', function () {

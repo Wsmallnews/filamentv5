@@ -8,6 +8,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | addons/*/resources/views/**, addons/order/src/**, addons/product/src/** | .ai/rules/amount-display.md |
 | addons/*/resources/views/** | .ai/rules/empty-state.md |
 | addons/*/src/** | .ai/rules/composition.md |
+| addons/*/src/Livewire/**, addons/*/resources/views/** | .ai/rules/component-events.md |
 | addons/*/config/*.php | .ai/rules/config.md |
 | addons/*/resources/views/** | .ai/rules/container-queries.md |
 | addons/*/resources/css/** | .ai/rules/css.md |

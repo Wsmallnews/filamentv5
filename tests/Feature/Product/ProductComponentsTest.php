@@ -152,9 +152,9 @@ it('多规格产品：规格选择、组合匹配、buy 事件与不可选规格
     $choosedVariant = invokeComponentMethod($component, 'getChoosedVariant', ...invokeSelectionArgs($component));
     expect($choosedVariant->product_spec_text)->toBe(['红', 'L']);
 
-    // buy 派发 product-buy 事件（携带变体 id 与数量）
+    // buy 派发 sn-product-buy 事件（携带变体 id 与数量）
     $component->call('buy')
-        ->assertDispatched('product-buy', function (string $name, array $params) use ($choosedVariant) {
+        ->assertDispatched('sn-product-buy', function (string $name, array $params) use ($choosedVariant) {
             $items = json_decode($params['relate_items'], true);
 
             return $params['type'] === 'product'
