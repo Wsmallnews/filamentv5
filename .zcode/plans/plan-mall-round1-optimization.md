@@ -17,8 +17,8 @@
 | T5 | P1 | 扩展包组件通信规则整理 + 事件命名规划（含现有事件重命名） | 规则 + 实施 | ✅ 已完成 |
 | T6 | P1 | order/src/Order.php 位置分析（已迁移 Features/Shortcuts/ShortcutRegistry） | 分析 | ✅ 已完成 |
 | T7 | P1 | OrderPipes 逻辑解释（说明文档） | 说明 | 📋 见本文 §三 |
-| T8 | P2 | 附加属性（小料/增值服务）完整可实施方案 | 方案 | ⏸️ **待用户确认后动工** |
-| T9 | P2 | 前端规格选择（PC 本地计算）+ uniapp 接口版综合方案 | 方案 | ⏸️ **待用户确认后动工** |
+| T8 | P2 | 附加属性（小料/增值服务）完整可实施方案 | 实施 | ✅ 已完成（2026-10-09，extra 命名定稿） |
+| T9 | P2 | 前端规格选择（PC 本地计算）+ uniapp 接口版综合方案 | 实施 | ✅ 已完成（含 F1 + 两个连带根因修复） |
 | T10 | P2 | 规格图片体系优化（规格值图 vs 组合图 / 订单快照 / plain vs media） | 方案 | ⏸️ **待用户确认后动工** |
 | T11 | P2 | 媒体库（spatie/laravel-medialibrary）完整方案 | 方案 | ⏸️ **待用户确认后动工** |
 
@@ -128,58 +128,56 @@ OrderPipes::scene('product')->stage(Stage::CREATING)->prepend('stock-lock', Lock
 
 ## 四、大方案（T8-T11，⏸️ 待用户确认后动工）
 
-### T8 附加属性（小料/增值服务）完整方案
+### T8 附加属性（小料/增值服务）✅（2026-10-09 实施完成，extra 命名定稿）
 
-**需求还原**：蜜雪冰城式小料 / 京东式增值服务（碎屏险、只换不修、延保）——与规格（SKU 维度，决定「买哪个货」）正交，是「买货时顺带加购的服务项」；可单选/多选、可必选/非必选、可设价格、可临时下架（小料卖完了）、可按数量计价（小料 ×2）。
+**命名**（用户拍板弃 addon）：`sn_product_extras`（库，两级）/ `sn_product_extra_items`（挂载，选项粒度）/ `Extra` / `ExtraItem` / `ExtraManager` / `ExtraType`(Single/Multiple) / `ExtraStatus`(Up/Down)；schema 节点与 relate_items 载荷键 `extras`。旧 attribute 体系（AttributeRepositoryResource/Models/ProductAttributeManager/AttributeStatus/迁移 stub）全部删除（git 可溯）。
 
-**现有基础盘点**：属性库 `sn_product_attribute_repositories`（组/选项两级 + options{is_require,is_multiple,is_num,limit_*_num} + price + status）+ 商品挂载 `sn_product_attributes`（product_id → 库引用，is_default 预选）+ `ProductAttributeManager`（buyCheckAndGet 校验 / buyCalc 计价 / formatAttribute 合并比较）。骨架方向正确，问题在：命名不达意（"attribute" 与规格语义混淆）、未接入新订单管道体系、单选/多选用 Toggle 而非显式类型字段、无临时下架的前端置灰语义。
+**已交付**：
 
-**方案（命名重构 + 对齐主流）**：
+1. **数据层**：extras 两表迁移（stub + 应用侧双侧，开发库 `migrate` 平滑新增、商品数据保留）；挂载为**选项粒度**（product_id + extra_id(选项) + is_default + price_override 分）——比组粒度挂载少一层 JSON 嵌套，覆盖价/子集启用都是普通列。
+2. **临时售罄 vs 永久下架**（用户问题 2 的答案）：选项级 `status`（Up/Down 永久，手动恢复）+ `sold_out_until`（date，**当天及之前置灰「已售罄」、次日惰性自动恢复，零人工零定时任务**；选未来日期=连休）。语义=餐饮 POS「估清每日清零」+ 美团收银「售卖时段自动恢复」的合体，主流首选的库存制留待 P2 库存扩展包（届时两维度互补）。
+3. **ExtraManager**（`Support/`）：`resolveProductExtras`（唯一解析源：组 Up + 挂载选项 Up，售罄保留标记，有效价 = price_override ?? 库价）+ `buyCheckAndGet`（必选/售罄/单多选/起购限购/未挂载拒绝，异常走翻译键）+ `buyCalc`（整数分 + 「珍珠×2」文本）。
+4. **管道**（legacy ProductAttribute 三件套迁移落位，决策 #19/#28）：`product/src/Pipes/{Check,Calc,Summary}/Extra.php` + Fetch/Product 预加载 `extraItems.extra.parent` + ProductShortcut 各阶段注册；Calc 走整数分 + FieldInfo 明细行（`order_fields.extra_amount`）；引擎 Summary 白名单不动（域中立，快照走 relate_options/amount_fields 通道）。
+5. **前台**：`specSchema.extras`（组/选项/有效价 price_parts/sold_out/is_default/limit_*）+ product-buy.js 扩展（toggleExtraOption/extrasTotalMinor/extrasPayload/is_default 预选）+ 详情页 markup（售罄置灰禁用可见、数量型步进器、合计行）；buy 载荷 `product_attributes` 键改 `extras`。
+6. **后台**：`Filament/Resources/Extras/` 五层（组表格 + 选项 Repeater 内联：价格/状态/售罄至/数量上下限）+ ProductForm「附加项」Section（挂载 Repeater：库选项 Select 按组分组 + 默认选中 + 覆盖价 + 行内直建选项）+ shop panel_register 注册。
+7. **测试**：ExtraTest 7 用例（解析/下架剔除/校验矩阵/计价/schema/buy 载荷）+ OrderPipelineTest 附加项 e2e（珍珠×2 覆盖价 + 大杯 → 金额/快照断言）；全量 436 passed。
 
-1. **领域术语与表名**（对齐主流电商「增值服务/加料」= value-added service / add-on）：
-   - 属性库 → **`sn_product_addons`**（两级：组「小料/增值服务」→ 选项「珍珠 / 二年碎屏险」）；文件 `Models/Addon.php`、`Filament/Resources/Addons/`（五层结构，AddonResource 替换 AttributeRepositoryResource，旧资源删除）。
-   - 商品挂载 → **`sn_product_addon_items`**（product_id + addon_id + is_default + order_column；覆盖字段 price_override 可空——同库选项在不同商品可改价）。
-   - `ProductAttributeManager` → **`src/Support/AddonManager.php`**（buyCheck/buyCalc/format 三方法语义保留，金额全面整数分）。
-   - 迁移按 database.md 规则：直接改原始迁移 + stub 双侧 + migrate:fresh（开发期无存量包袱）。
+**真机验证（2026-10-09 全通）**：附加项渲染 2 组、珍珠 is_default 预选、芝士碎售罄 disabled+「已售罄」、保温套覆盖价 4.50（库 5.00）、本地合计 ¥9.50、确认页单价 94.50/89.50 快照含附加项名、落单 ¥89.50（extra_price=450 分 + buy_extras 结构完整落库）、提交→收银台跳转。
 
-2. **组字段设计**（sn_product_addons 主行）：
-   - `type`：enum `Single`（单选，radio 交互）/ `Multiple`（多选，checkbox）——**显式类型字段**替代 options.is_multiple Toggle；
-   - `is_require`：bool（必选/非必选；必选单选 = 默认选中不可取消或必须选一个，主流为前者）；
-   - `is_num`：bool（按数量计价：小料 ×2；非数量型固定 ×1，如延保）；
-   - `status`：enum `Up/Down`（**临时下架**：Down 时前端置灰展示「已售罄」、不可选但可见——恢复上架自动回来，不删挂载关系）；子选项同字段（组上架 + 选项上架才可选）。
-   - 选项行：`price`（整数分，加价金额）、`limit_min_num/limit_max_num`（数量型起购/限购，收敛进 options JSON）。
+**T8 期间连带修复（F1 完整形态）**：SPA（wire:navigate）站内跳转经 morph 更新页面，**所有视图内联脚本（@once/@assets 注册的 Alpine）一律不执行**——shop 页面级 snShopOrderConfirm/snShopDetail/snShopCashier 同样中招（T9 验证通过是整页加载的运气）。已全部迁移：宿主跳转监听改 **PHP `#[On]` + `$this->redirect()`**（gotoConfirm/gotoCashier 范式）、pay-methods 选择改 `wire:click="choose()"` 服务端派发；规则定稿 component-events.md（跳转响应用 PHP #[On]，payload 键名与参数名精确匹配）。
 
-3. **挂载方式（双通道，同 unit 决策 #16 模式）**：ProductForm 附加项 Repeater——每行**从属性库选择**（Select 关联 addon 组，选后带出其选项）+ **行内直建**（Select 的 `createOptionForm` 直接新建库组，一步入库，既满足「先在库里建好再选」也满足「加商品时顺手建」）。挂载粒度 = 组级（商品选用「小料」组，选项全集来自库；需要子集时在挂载行勾选启用的选项——存 `sn_product_addon_items` 的 options.enabled_children）。
+**演示数据**：dev 库已建附加项库（加料组：珍珠/奶盖/芝士碎[今日售罄]；增值服务组：保温套[覆盖价 4.50]）并挂载到咖啡豆（id 5），可强刷详情页体验（资产 URL 版本恒定，需 Ctrl+F5）。
 
-4. **前端详情页交互**：规格选择器下方渲染附加项组（单选 = badge 单选组；多选 = badge 复选组；数量型 = badge + step-number）；合计价本地实时累加（依赖 T9 的本地计价基建）；已售罄选项置灰 + 「已售罄」角标。
 
-5. **下单链路（接入管道体系）**：`relate_items[].product_attributes` 字段沿用（键名建议一并改 `addons`），Fetch 阶段 AddonManager::buyCheck 校验（必选/下架/数量），Calc 阶段 buyCalc 加价并入 `amount_fields`（明细行 `sn-order::order.fields.addon` 翻译键），Summary 阶段选项名快照进 `relate_attributes`（「珍珠×2」）——全部经 product 包的 Pipes/{Fetch,Calc,Summary}/Product 或独立 `Pipes/*/Addon` 管道承载，order 引擎零改动。
+**2026-10-10 复审修订（用户反馈五项）**：
 
-6. **uniapp 接口**（与 T9 联动）：商品详情 payload 附 `addons` 节点（组/选项/价格/状态/类型），结构与 PC 前端消费的 JSON 一致，一份结构两端用。
+**2026-10-10 双层挂载重构（用户提议）**：ProductForm 附加项挂载改双层 Repeater（先选组→组内挑选项；选过的组兄弟行禁选、换组自动清空内层、组内行内直建自动归组）——数组状态经新增 Support/ExtraItemService 拍平落库（对标 ProductSpecService 范式：toFormState 按组聚合回填 / save 拍平 diff / strip 脱水剔除；软删选项的挂载行保留，库恢复即回归）。**表结构零改动**（扁平选项粒度挂载不变，组信息经选项 parent 推导）；CreateProduct/EditProduct 六钩子接线。真机验证：回填两组分层呈现、覆盖价 4.5 回显、保存后挂载/默认/覆盖价/顺序全保留、前台 schema 不变。
+① 软删除：extras 表补 softDeletes（双侧迁移 + dev 库 ALTER 保商品数据），Extra 模型 SoftDeletes + 组行删除级联软删子项——删除语义 = 商品端自动消失（挂载行保留、恢复上架即回归）、订单快照不受影响；Extras 后台补齐软删四件套（TrashedFilter/Restore/ForceDelete/批量）。
+② 命名空间/字段修复由用户完成并经回归确认：ExtraForm 统一 use FilamentForms 前缀风格；enumsToggleButtons(ExtraType::class, 'type') 显式字段名（工厂默认 status 会与状态字段冲突——工厂签名 (enum, field='status', label)）。
+③ 组 description 前台显示：resolveProductExtras 输出 + 详情页组名后跟 sn-descript-text 帮助文字。
+④ sold_out_until 升级 datetime（时分秒）：迁移双侧 + dev ALTER、模型 cast、DateTimePicker + seconds() + minDate(now) 禁选过去时间 + suffixAction 时钟图标「一键售罄至当天结束」(endOfDay)、helper 文案更新；判据改为 isFuture()（时间点语义）。
+⑤ ProductForm 附加项 Section 后台不可见的根因：四种布局（tabs/plain/wizard/allFields）各有一处规格信息，初版只命中两处——已补齐全部四处（真机验证编辑页出现「附加项」Section 与添加按钮）。
 
-**待确认点**：① 表名/类名是否认可（addons）；② 价格覆盖（同库选项按商品改价）是否需要；③ 下架语义选「置灰可见」还是「隐藏」；④ 旧 AttributeRepositoryResource 删除时机。
+### T9 前端规格选择（PC 本地计算）+ uniapp 接口综合方案 ✅（2026-10-08 实施完成，两确认点按推荐落地）
 
-### T9 前端规格选择（PC 本地计算）+ uniapp 接口综合方案
+**已交付**：
 
-**现状**：每次点击规格按钮 → `wire:click="chooseSpec"` Livewire 请求 → render() 重算可选矩阵（getSpecSelectable）+ 已选变体（getChoosedVariant）+ 价格。延迟 = 一次网络往返，且此逻辑将来 uniapp 要再写一遍。
+1. **specSchema 版本化契约**（`Product::getSpecSchema`）：`schema_version=1` + `spec_type` + `specs`（组树，含子项 image——T10 复用）+ `variants`（仅可售：id/spec_ids/spec_text/price 整数分/price_parts 服务端预制展示件/original_price_parts/stock）+ `addons: []`（T8 预留节点）。序列化按「将来直接当 uniapp API 响应」标准写。
+2. **本地选择/计价**：`addons/product/resources/js/components/product-buy.js`（isSelectable/matchedVariant/priceParts，与服务端原 getSpecSelectable/getChoosedVariant 同构算法）；规格点击零 Livewire 请求，价格本地切换（真机验证 45.00→85.00）；数量 step-number 改 `x-model` 纯 Alpine 状态。
+3. **服务端只管信任边界**：`buy(int $variantId, int $productNum)` 在可售变体集合内校验后派发 sn-product-buy；chooseSpec/selectedSpecs/getSpecSelectable/getChoosedVariant 服务端路径全部删除（单一事实源 = JS schema）。
+4. **F1 修复**：order Confirm 提交按钮改 `wire:click="submitOrder"`（create 模式重跑管道 + 落单 + 派发），删除嵌套 Alpine 脚本 snOrderConfirm；真机验证点击→落单→跳收银台全通。
+5. **测试**：ProductComponentsTest 规格用例重写为 schema 契约断言 + buy 校验（无货/不存在/数量下限）；OrderPipelineTest 新增 submitOrder 落单用例。全量 428 通过。
 
-**结论：应该切换为前端本地计算**，理由：
+**连带发现并修复的两个根因**（比 F1 更深）：
 
-1. **零信任问题**：本地计算只负责「展示态」（哪个可选、当前命中哪个变体、显示什么价），**服务端 OrderCreate 的 Check/Calc 管道永远按 DB 重算价格与库存**——前端不传价格，只传 `product_variant_id + num + addons`，篡改无效。这是淘宝/京东/有赞的一致架构。
-2. **数据已齐**：可选矩阵的计算输入 = specs 树 + 变体列表（price/stock/status/spec_ids/image），商品详情页本来就要渲染这些——打包成一份 **spec_schema JSON** 随页面下发即可，无额外请求。
-3. **uniapp 复用**：把 spec_schema 定义为**版本化契约**（`schema_version` 字段），PC（Alpine）与 uniapp（JS/TS）实现同一份纯函数算法（输入 schema + 已选集合 → 可选矩阵 + 命中变体）。算法无框架依赖，可提为共享 npm 包或双端各写（量小，~100 行）。
-4. **体验**：点击零延迟；附加项（T8）加价合计也在本地实时算，不用混合「规格靠请求、加料靠本地」的割裂交互。
+- **F1-a：AlpineComponent 构建产物必须 ESM**——product/support 两包 bin/build.js 缺 `format: 'esm'`，esbuild 默认产出 IIFE，`import()` 后命名空间为空 → Alpine.data 注册 false → **swiper/lightbox 前端从未真正初始化过**（轮播只显示静态首帧）。已补 format 并重建发布；js.md 规则待沉淀。
+- **F1-b：boot() 捕获参数早于请求 updates 应用**——boot() 里 setParams 的 remark 是 hydration 早期旧值，同一提交请求内 defer model 更新（remark）不会进管道参数（真机表现：填备注提交后落库为空）。修复：提取 `syncOrderParams()`，boot 与 submitOrder 各刷一遍。判据：**同一请求内更新的属性在 action 里消费时必须重刷参数，不能信任 boot 构造的快照**。
 
-**PC 实施形态**：
+**uniapp 接口版衔接现状**：schema 已按 API 响应标准输出，后续做 `GET /api/products/{id}` 时直接序列化该结构 + 客户端复刻 product-buy.js 算法（~120 行纯函数）即可。
 
-- Product 组件 render() 输出 `specSchema`（specs 树 + variants 全量 + addons）到 Alpine 组件 `snProductBuy`；
-- chooseSpec 改为 Alpine 本地方法（纯 JS，不发请求）：维护 `selected`、算 `selectable`（与现 getSpecSelectable 同算法：排除本组、与可售变体 spec_ids 匹配）、算 `matchedVariant`、驱动价格/图片/库存展示；
-- `productNum`、加料选择、合计价全部本地；**「立即购买」点击才发唯一一次 Livewire 请求**（buy() 校验 + dispatch sn-product-buy），或直接由宿主 JS 跳转确认页（确认页服务端全量重算）；
-- Livewire 的 `chooseSpec`/`selectedSpecs` 服务端路径删除（避免双轨）。
+**遗留演示数据**：dev 库本轮新增 6 笔未支付测试订单（咖啡豆 ¥45-¥255，member 3），可留作联调或清理。
 
-**接口版（uniapp）规划**：`GET /api/products` 与 `GET /api/products/{id}` 响应直接复用 specSchema 序列化结构（+ addons 节点）；选规格/选加料/算价全在客户端；提交订单走 `POST /api/orders/preview`（试算）与 `POST /api/orders`（创建），参数结构与 PC 确认页一致（relate_items）。**本期不实现 API 路由**，但 T9 落地时 specSchema 的序列化必须按「将来直接当 API 响应」的标准写（资源类封装，不散拼数组）。
-
-**待确认点**：① 是否连「数量/加价合计」也全部本地（推荐是）；② buy() 是否保留 Livewire 请求（推荐保留——服务端先校验再 dispatch，防止已下架商品跳到确认页才报错）。
+**设计留档**：本地计算只负责展示态（可选矩阵/命中变体/价格显示），服务端 OrderCreate 管道永远按 DB 重算价格库存——前端只传 `product_variant_id + num + addons`，篡改无效（淘宝/京东同架构）；接口版规划 `GET /api/products/{id}` 直接序列化 specSchema + `POST /api/orders(Preview)`，参数结构与 PC 确认页一致。
 
 ### T10 规格图片体系方案
 
@@ -229,6 +227,13 @@ OrderPipes::scene('product')->stage(Stage::CREATING)->prepend('stock-lock', Lock
 36. **order 纯引擎不预埋营销参数**（2026-10-08 用户拍板）：Confirm 组件 coupon_id 删除——引擎字段准入判据 = orders 表有列/引擎消费（remark ✔）；营销概念（coupon）由将来独立扩展包经 OrderPipes 管道自带参数接入。
 37. **注册表类参照 support 归位 Features 子系统目录，门面名 = 注册表类名**（2026-10-08 用户拍板）：`Wsmallnews\Order\Order` → `Wsmallnews\Order\Features\Shortcuts\ShortcutRegistry`，门面 `Facades\Order` → `Facades\ShortcutRegistry`（对齐 support `Facades\CompositionRegistry` → `Features\Composition\CompositionRegistry` 最新范式；Feed/Search 等老域短名门面不效仿）；OrderManager 名字保留给将来别的用途。
 38. **Livewire 组件公开属性驼峰，管道/接口参数下划线**（2026-10-08 沉淀）：`$addressId` / `$relateItems`；传参时 `'address_id' => $this->addressId`。
+39. **组件交互 JS 一律走 Filament 资产管线，禁止视图内联 Alpine 脚本**（2026-10-08，F1 系定稿）：`AlpineComponent::make` + `x-load-src` + `wire:ignore`（swiper 范式）；嵌套组件内联 `@once` 脚本经 Livewire 水合不生效。服务端可承载的动作直接 `wire:click`（submitOrder 范式）。
+40. **AlpineComponent 资产构建必须 `format: 'esm'`**（2026-10-08，F1-a）：esbuild 默认 IIFE → `import()` 命名空间为空 → Alpine.data 注册 false 静默失效（swiper/lightbox 曾长期中招）；product/support 两包 build.js 已补，其余包建 JS 资产时照此。
+41. **Livewire boot() 参数快照陷阱**（2026-10-08，F1-b）：boot() 早于请求 updates 应用，同一请求内 defer model 更新的属性在 action 消费时必须重刷参数（Confirm::syncOrderParams 双刷范式）。
+42. **规格选择本地化契约**（2026-10-08，T9）：specSchema（版本化）为 PC/uniapp 唯一选择逻辑数据源；服务端仅保留信任边界校验（buy 按可售变体集合匹配 variant_id）；数量/计价全部本地。
+43. **附加项域术语 extra + 售罄双字段**（2026-10-09，T8）：弃 addon（插件歧义）用 extra（外卖行业标准词）；选项粒度挂载（覆盖价/子集为普通列，无 JSON 嵌套）；临时售罄 = sold_out_until 日期惰性恢复（估清语义），永久下架 = status；价格覆盖空值实时跟随库价、有值商品固定，订单照常快照。
+44. **F1 完整形态：SPA morph 下内联脚本一律不执行，宿主跳转监听必须 PHP #[On] + redirect**（2026-10-09）：wire:navigate 站内跳转经 morph 更新页面，视图内 @once/@assets 内联脚本（页面级同样中招）不执行；宿主对事件的跳转响应统一 #[On] + redirect()（shop gotoConfirm/gotoCashier 范式），组件交互选服务端 wire:click（pay-methods choose 范式）；payload 键名与监听方法参数名精确匹配（order_sn → $order_sn，不自动驼峰）。规则定稿 component-events.md。
+45. **Filament 类引入规范 + 软删级联修复**（2026-10-10 用户拍板/反馈）：Forms/Schemas 目录导入（use FilamentForms 后 FormsComponentsXxx 前缀引用，同目录多类同理如模型 casts 的 Enums）；其余顶部 use 直用；Get/Set 正确类为 FilamentSchemasComponentsUtilities{Get,Set}（规则沉淀 filament.md）。Extra::booted 删除级联修复：forceDeleting() 是注册事件回调的静态方法（实例判断是 protected 属性），级联用 deleting/forceDeleting/restored 三钩子分别对 children 软删/强删/恢复。
 
 ## 六、验证基准与结果
 
@@ -249,9 +254,10 @@ OrderPipes::scene('product')->stage(Stage::CREATING)->prepend('stock-lock', Lock
 | 落单：备注「第二次验证：豆子磨粉」完整落库 orders.remark、状态 unpaid、buyer member:3 | ✅ |
 | sn-order-created → 宿主跳转收银台（order_sn 携带）、收银台金额渲染 | ✅ |
 
-### 真机发现的新问题（前次阶段 C 遗留，未浏览器验证过的代码）
+### 真机发现的新问题（F1 系，T9 实施时已全部修复 ✅）
 
-**F1（P0，待修）：嵌套 Livewire 组件的内联 Alpine 脚本不生效**——order 包 confirm 视图的 `@once` 脚本注册 `Alpine.data('snOrderConfirm')`，但嵌套组件经 Livewire 水合后 x-data 元素未被 Alpine 初始化（`_x_dataKeeper` 为空）→ **「提交订单」按钮的 `@click="create"` 在真实浏览器中无效**（自动化测试走 Livewire 层不经过 Alpine，故未暴露）。页面级（shop 包页面视图）同模式脚本正常（snShopDetail / snShopOrderConfirm 的 `$wire.on` 均工作）；**收银台的 snPayMethods（pay 包嵌套组件，choose 选择支付方式）大概率同病**，阶段 D 收银台前端消费时一并处理。
-**修复方向**（二选一，实施时定）：① 提交按钮改 `wire:click` 直调服务端方法（把 `set type=create` 与 `create()` 合并为一个 submit 动作），彻底不依赖嵌套组件内联 Alpine；② 内联脚本提升到宿主页面视图（shop 页面级脚本已证明可靠）。
+**F1（已修）：嵌套 Livewire 组件的内联 Alpine 脚本不生效**——order 包 confirm 视图的 `@once` 脚本注册 `Alpine.data('snOrderConfirm')`，经 Livewire 水合后 x-data 未初始化 → 「提交订单」按钮失效。**修复**：按钮改 `wire:click="submitOrder"` 直调服务端（真机验证通过）；组件内交互动作一律不用内联 Alpine。
+**F1-a（已修，比 F1 更深）：AlpineComponent 资产构建必须 ESM**——product/support 包 bin/build.js 缺 `format: 'esm'`，IIFE 产物经 `import()` 命名空间为空 → **swiper/lightbox 轮播从未真正初始化过**（只显示静态首帧）。已补配置重建；组件 JS 今后一律走 Filament 资产管线（AlpineComponent + x-load-src），不在视图内联。
+**F1-b（已修）：boot() 参数快照陷阱**——boot() 的 setParams 捕获 hydration 早期值，同一提交请求内 defer model 更新的属性（remark）不进管道参数（真机表现：备注提交后落库为空）。修复：`syncOrderParams()` 在 boot 与 submitOrder 各刷一遍。**收银台 snPayMethods（pay 包嵌套 Alpine choose）仍属此类，阶段 D 收银台前端消费时按 F1 模式重构**。
 
-**遗留演示数据**：dev 库新增两笔未支付测试订单（sn 202602094511025465003000、202602112368530000030000，member 3，¥45 咖啡豆），留作收银台/订单管理联调样例，不需要可删。
+**遗留演示数据**：dev 库累计 8 笔未支付测试订单（member 3，咖啡豆 ¥45-¥255），可留作收银台/订单管理联调样例，不需要可删。

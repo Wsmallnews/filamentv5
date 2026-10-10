@@ -17,6 +17,8 @@ Livewire 目录分层约定：Components/ 目录下全部是内嵌组件——�
 
 判据：纯内容块 → 内容贴卡型；带行/工具条的列表 → 行式列表型；卡片网格/瀑布流 → 网格卡片型。页面骨架组件（Navigation/Footer/Breadcrumb）与无自有卡片外观的组件（分类树、同级导航）不适用 CanBeContained。注意 `@class` 数组无键项是恒定基线不是条件回退，别把基线类写成 `=> ! $contained` 互斥分支。
 
+## 组件交互 JS：走 Filament 资产管线，禁止视图内联 Alpine 脚本；可服务端承载的动作直接 wire:click
+组件（尤其嵌套组件）视图里的 `@once`/`@assets` 内联 `<script>` 注册 `Alpine.data`，经 Livewire 水合后 x-data 不初始化——**嵌套组件内联 Alpine 一律失效**（页面级偶发可用也不可靠）。正确做法二选一：① 纯客户端交互（规格选择/轮播/tab）→ 包内 `resources/js/components/*.js` 默认导出组件函数，`AlpineComponent::make` 注册资产，视图用 `x-load` + `wire:ignore` + `x-load-src="{{ FilamentAsset::getAlpineComponentSrc(...) }}"` + `x-data="导出函数名({...})"`（swiper 范式）；② 服务端可承载的业务动作（提交订单）→ 直接 `wire:click` 服务端方法，不用 Alpine（order Confirm::submitOrder 范式）。另：Livewire `boot()` 早于请求 updates 应用，同一请求内 defer model 更新的属性在 action 消费时必须重刷管道参数（Confirm::syncOrderParams 双刷范式）。
 ## 跨模块导航复用：直接嵌入 cms 导航组件 + :module 配置寻址（视图副本是最后退路）
 复用 cms 导航（shop 已落地）：调用方在自己的页面容器里直接 `<livewire:sn-cms::components.navigation.navigation :scope-type :scope-id :module="app(本包Plugin)->getId()" />`——**同一个组件、同一套视图与 sn-cms-nav CSS**。组件经 `Wsmallnews\Support\Livewire\Concerns\HasModuleContext`（通用能力，沉淀在 support） 解析 module 上下文：navigationConfig/moduleConfig 优先读消费模块的 config（{module}.navigation / themes / search / guard 节），moduleRoute 走 {module}.routes.name 前缀，未声明时回落组件所有方默认——两个模块的导航形态互不影响。Brothers 同法接入。Footer 为 cms 自用组件（不复用）：其 scopeable 由调用处在嵌 入处解析（Utils::getScopeable('footer')）后显式传入，组件内部禁止解析 scope——内嵌组件的数据上下文（scope/module）一律经 props 注入，此为通用原则。primary 风格文字为白色，容器必须给深色背景（sn-primary-bg）。theme-view prop 是视图覆盖的最后退路（仅在复用视图确实无法满足时才做自定义副本）。
 

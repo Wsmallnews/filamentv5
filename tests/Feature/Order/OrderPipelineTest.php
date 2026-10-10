@@ -15,10 +15,14 @@ use Wsmallnews\Order\Support\FieldInfo;
 use Wsmallnews\Order\Support\OrderPipes;
 use Wsmallnews\Pay\Contracts\WalletOperator;
 use Wsmallnews\Pay\Enums\PayStatus;
+use Wsmallnews\Product\Enums\ExtraStatus;
+use Wsmallnews\Product\Enums\ExtraType;
 use Wsmallnews\Product\Enums\ProductSpecType;
 use Wsmallnews\Product\Enums\ProductStatus;
 use Wsmallnews\Product\Enums\ProductStockType;
 use Wsmallnews\Product\Enums\VariantStatus;
+use Wsmallnews\Product\Models\Extra;
+use Wsmallnews\Product\Models\ExtraItem;
 use Wsmallnews\Product\Models\Product;
 use Wsmallnews\Product\Models\Variant;
 use Wsmallnews\Profile\Models\Address;
@@ -469,6 +473,90 @@ it('确认组件渲染：整数分金额格式化展示与商品快照', functio
         ->assertSee('69.00')          // 单价
         ->assertSee('138.00')         // 小计与应付
         ->assertSee('共 2 件商品');
+});
+
+it('确认组件 submitOrder：create 模式落单并派发 sn-order-created（F1 修复后按钮直调服务端）', function () {
+    $buyer = pipelineMember();
+    $product = pipelineProduct(6900, 500);
+
+    livewire('sn-order::components.confirm', [
+        'buyer' => $buyer,
+        'order_type' => 'product',
+        'relateItems' => [
+            ['product_id' => $product->id, 'product_variant_id' => $product->variants->first()->id, 'product_num' => 1],
+        ],
+        'from' => 'product-detail',
+        'scopeType' => 'sn-shop',
+        'scopeId' => 0,
+        'remark' => 'Submit via button',
+    ])
+        ->call('submitOrder')
+        ->assertDispatched('sn-order-created', fn (string $name, array $params) => filled($params['order_sn'] ?? null));
+
+    $order = Order::query()->where('buyer_id', $buyer->getKey())->first();
+    expect($order)->not->toBeNull()
+        ->and($order->status->value)->toBe('unpaid')
+        ->and($order->remark)->toBe('Submit via button')
+        ->and($order->orderItems->count())->toBe(1);
+});
+
+it('附加项管道：加价并入金额与快照（珍珠×2 覆盖价 + 大杯）', function () {
+    $buyer = pipelineMember();
+    $product = pipelineProduct(6900, 500);
+
+    // 附加项库：小料（多选数量型）+ 杯型（单选）
+    $toppings = Extra::create([
+        'scope_type' => 'sn-shop', 'scope_id' => 0, 'parent_id' => 0,
+        'name' => '小料', 'type' => ExtraType::Multiple, 'is_num' => true,
+        'status' => ExtraStatus::Up,
+    ]);
+    $pearl = Extra::create(['parent_id' => $toppings->id, 'name' => '珍珠', 'price' => '2.00', 'status' => ExtraStatus::Up]);
+    $cup = Extra::create([
+        'scope_type' => 'sn-shop', 'scope_id' => 0, 'parent_id' => 0,
+        'name' => '杯型', 'type' => ExtraType::Single,
+        'status' => ExtraStatus::Up,
+    ]);
+    $large = Extra::create(['parent_id' => $cup->id, 'name' => '大杯', 'price' => '1.00', 'status' => ExtraStatus::Up]);
+
+    // 挂载（珍珠按商品覆盖价 2.50）
+    ExtraItem::create(['product_id' => $product->id, 'extra_id' => $pearl->id, 'price_override' => '2.50']);
+    ExtraItem::create(['product_id' => $product->id, 'extra_id' => $large->id]);
+
+    $create = pipelineCreate($buyer, [
+        [
+            'product_id' => $product->id,
+            'product_variant_id' => $product->variants->first()->id,
+            'product_num' => 2,
+            'extras' => [
+                ['id' => $toppings->id, 'children' => [['id' => $pearl->id, 'num' => 2]]],
+                ['id' => $cup->id, 'children' => [['id' => $large->id]]],
+            ],
+        ],
+    ]);
+
+    // 试算：附加项单份加价 = 250×2 + 100 = 600 分；×2 件 = 1200 分；pay_fee = 6900×2 + 1200
+    // （引擎 Summary 白名单不含 extra_* 顶层键，快照统一走 relate_options / amount_fields 通道）
+    $rocket = $create->calc('calc');
+    $payloads = $rocket->getPayloads();
+    $relateItem = $payloads['relate_items'][0];
+
+    expect($relateItem['relate_options']['extra_price'])->toBe(600)
+        ->and($relateItem['relate_options']['extra_texts'])->toBe(['珍珠×2', '大杯'])
+        ->and($relateItem['relate_price'])->toBe(6900 + 600)
+        ->and($relateItem['relate_amount'])->toBe((6900 + 600) * 2)
+        ->and($relateItem['amount_fields']['extra_amount'])->toBe(1200)
+        ->and($payloads['amount_fields']['relate_amount'])->toBe((6900 + 600) * 2)
+        ->and($payloads['pay_fee'])->toBe((6900 + 600) * 2);
+
+    // 落单：快照进 order_items（属性文本 + 价格 + 选择结构）
+    $order = $create->create($rocket);
+    $orderItem = $order->orderItems->first();
+
+    expect($orderItem->amount->getAmount())->toBe((string) ((6900 + 600) * 2))
+        ->and($orderItem->relate_attributes)->toContain('珍珠×2', '大杯')
+        ->and($orderItem->relate_options['extra_price'])->toBe(600)
+        ->and($orderItem->relate_options['buy_extras'][0]['children'][0]['price'])->toBe(250)
+        ->and($orderItem->amount_fields['extra_amount'])->toBe(1200);
 });
 
 it('FieldInfo 解析侧：sorted 排序 + render 整行 HtmlString', function () {

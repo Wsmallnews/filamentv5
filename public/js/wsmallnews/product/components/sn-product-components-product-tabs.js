@@ -1,0 +1,1 @@
+function r(){return{currentTab:null,init(){window.addEventListener("scroll",()=>{this.$root.querySelectorAll(".tab-content").forEach(t=>{let e=t.getBoundingClientRect();e.top<=100&&e.bottom>=100&&(this.currentTab=t.getAttribute("id"))})})}}}export{r as default};

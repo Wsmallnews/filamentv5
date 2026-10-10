@@ -17,14 +17,6 @@ use function Pest\Livewire\livewire;
 // ========================= 测试辅助 =========================
 
 /**
- * 调用组件的 protected 方法（规格匹配等展示逻辑）。
- */
-function invokeComponentMethod($testable, string $method, ...$args): mixed
-{
-    return Closure::bind(fn () => $this->{$method}(...$args), $testable->instance(), ProductComponent::class)();
-}
-
-/**
  * 单规格产品（带唯一变体）。
  */
 function createSingleProduct(array $attributes = []): Product
@@ -125,53 +117,66 @@ it('产品详情组件按 id 渲染单规格产品（唯一变体自动选中）
         'authUser' => $user,
     ])
         ->assertSee($product->title)
-        ->assertSet('id', $product->id);
+        ->assertSet('id', $product->id)
+        // 单规格：schema 无规格组、唯一可售变体；初始价格件取变体价（SEO / Alpine 加载前回退）
+        ->assertViewHas('specSchema', fn (array $schema) => $schema['specs'] === []
+            && count($schema['variants']) === 1
+            && $schema['variants'][0]['id'] === $product->variants->first()->id)
+        ->assertViewHas('initialPriceParts', fn (array $parts) => $parts['amount'] === '12.50');
 
     // 浏览计数增加（登录用户同时记录浏览足迹）
     expect((int) $product->fresh()->counter['view_num'])->toBe(1);
 });
 
-it('多规格产品：规格选择、组合匹配、buy 事件与不可选规格', function () {
+it('多规格产品：specSchema 契约输出与 buy 事件服务端校验', function () {
     $product = createMultiProduct(['scope_type' => 'sn-test', 'scope_id' => 0]);
 
-    $colorSpec = $product->parentSpecs->first();
-    $sizeSpec = $product->parentSpecs->last();
-    $redSpec = $colorSpec->children->firstWhere('name', '红');
-    $mSpec = $sizeSpec->children->firstWhere('name', 'M');
-    $lSpec = $sizeSpec->children->firstWhere('name', 'L');
+    $v2 = $product->variants->firstWhere('product_sn', 'A2');     // 红/L 有货
+    $v3 = $product->variants->firstWhere('product_sn', 'A3');     // 蓝/M 有货
+    $v1 = $product->variants->firstWhere('product_sn', 'A1');     // 红/M 无库存
 
     $component = livewire(ProductComponent::class, ['scopeType' => 'sn-test', 'scopeId' => 0, 'id' => $product->id]);
 
-    // 未选满全部规格组 → 无已选变体
-    $component->call('chooseSpec', $colorSpec->id, $redSpec->id)
-        ->assertSet('selectedSpecs', [$colorSpec->id => $redSpec->id]);
-    expect(invokeComponentMethod($component, 'getChoosedVariant', ...invokeSelectionArgs($component)))->toBeNull();
+    // schema 契约（PC Alpine 与 uniapp 接口共用）：规格组树 + 仅可售变体 + addons 预留节点
+    $component->assertViewHas('specSchema', function (array $schema) use ($v2, $v3) {
+        $saleableIds = collect($schema['variants'])->pluck('id')->all();
 
-    // 选满组合 红+L → 命中唯一有货变体 v2（红/L）
-    $component->call('chooseSpec', $sizeSpec->id, $lSpec->id);
-    $choosedVariant = invokeComponentMethod($component, 'getChoosedVariant', ...invokeSelectionArgs($component));
-    expect($choosedVariant->product_spec_text)->toBe(['红', 'L']);
+        return $schema['schema_version'] === 1
+            && $schema['spec_type'] === 'multiple'
+            && count($schema['specs']) === 2
+            && count($schema['specs'][0]['children']) === 2
+            && $schema['specs'][0]['children'][0]['name'] === '红'
+            && $saleableIds === [$v2->id, $v3->id]
+            && collect($schema['variants'])->firstWhere('id', $v2->id)['spec_ids'] === $v2->specs->pluck('id')->values()->all()
+            && collect($schema['variants'])->firstWhere('id', $v2->id)['price'] === 2000
+            && collect($schema['variants'])->firstWhere('id', $v2->id)['price_parts']['amount'] === '20.00'
+            && collect($schema['variants'])->firstWhere('id', $v2->id)['spec_text'] === ['红', 'L']
+            && $schema['extras'] === [];
+    });
 
-    // buy 派发 sn-product-buy 事件（携带变体 id 与数量）
-    $component->call('buy')
-        ->assertDispatched('sn-product-buy', function (string $name, array $params) use ($choosedVariant) {
+    // buy：可售变体 → 派发 sn-product-buy（携带变体 id 与数量）
+    $component->call('buy', $v2->id, 2)
+        ->assertDispatched('sn-product-buy', function (string $name, array $params) use ($v2) {
             $items = json_decode($params['relate_items'], true);
 
             return $params['type'] === 'product'
-                && $items[0]['product_variant_id'] === $choosedVariant->id
-                && $items[0]['product_num'] === 1;
+                && $items[0]['product_variant_id'] === $v2->id
+                && $items[0]['product_num'] === 2;
         });
 
-    // 已选红色时：尺码 M 的组合无库存 → 不可选，L 可选
-    $selectable = invokeComponentMethod($component, 'getSpecSelectable', ...invokeSelectableArgs($component));
-    expect($selectable[$sizeSpec->id][$mSpec->id])->toBeFalse()
-        ->and($selectable[$sizeSpec->id][$lSpec->id])->toBeTrue();
+    // buy：无库存变体 / 未选规格（0）/ 不存在变体 → 服务端拒绝，不派发
+    $component->call('buy', $v1->id, 1)->assertNotDispatched('sn-product-buy');
+    $component->call('buy', 0, 1)->assertNotDispatched('sn-product-buy');
+    $component->call('buy', 999999, 1)->assertNotDispatched('sn-product-buy');
 
-    // 取消颜色选择（再次点击红）→ 两组约束解除，全部规格值恢复可选（红/M、蓝/L 组合本身无库存除外）
-    $component->call('chooseSpec', $colorSpec->id, $redSpec->id);
-    $selectable = invokeComponentMethod($component, 'getSpecSelectable', ...invokeSelectableArgs($component));
-    expect($selectable[$colorSpec->id][$redSpec->id])->toBeTrue()
-        ->and($selectable[$sizeSpec->id][$mSpec->id])->toBeTrue();
+    // buy：数量下限保护（0/负数回退为 1）
+    $component->call('buy', $v3->id, 0)
+        ->assertDispatched('sn-product-buy', function (string $name, array $params) use ($v3) {
+            $items = json_decode($params['relate_items'], true);
+
+            return $items[0]['product_variant_id'] === $v3->id
+                && $items[0]['product_num'] === 1;
+        });
 });
 
 it('隐藏产品详情可访问（隐藏 = 不列表展示，直达链接可买）', function () {
@@ -184,30 +189,3 @@ it('隐藏产品详情可访问（隐藏 = 不列表展示，直达链接可买�
     livewire(ProductComponent::class, ['scopeType' => 'sn-test', 'scopeId' => 0, 'id' => $product->id])
         ->assertSee($product->title);
 });
-
-/**
- * 组装 getChoosedVariant 的参数（当前产品 + 规格组 + 可售变体）。
- */
-function invokeSelectionArgs($component): array
-{
-    $product = invokeComponentMethod($component, 'loadProduct');
-
-    return [
-        $product,
-        invokeComponentMethod($component, 'getParentSpecs', $product),
-        invokeComponentMethod($component, 'getSaleableVariants', $product),
-    ];
-}
-
-/**
- * 组装 getSpecSelectable 的参数。
- */
-function invokeSelectableArgs($component): array
-{
-    $product = invokeComponentMethod($component, 'loadProduct', false);
-
-    return [
-        invokeComponentMethod($component, 'getParentSpecs', $product),
-        invokeComponentMethod($component, 'getSaleableVariants', $product),
-    ];
-}
