@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>规格选择器 · 形态演示（T10）</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.x/dist/cdn.min.js"></script>
+<style>
+    [x-cloak] { display: none !important; }
+    body { -webkit-font-smoothing: antialiased; }
+    /* 大图形态：auto-fill 自适应列数，卡宽钳 ~120-160px（436px 容器→3 列、600→4 列、750→5 列，淘宝 PC 同款） */
+    .spec-grid { grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr)); }
+    /* 附加项有数量组：容器查询 1/2 列（原生 CSS 写法；线上走 Tailwind @container 体系） */
+    .extras-container { container-type: inline-size; }
+    .extras-grid { grid-template-columns: minmax(0, 1fr); }
+    @container (min-width: 400px) {
+        .extras-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+</style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800">
+
+<header class="bg-white border-b border-gray-200">
+    <div class="max-w-6xl mx-auto px-6 py-5">
+        <h1 class="text-xl font-bold">规格选择器 · 形态演示（T10 规格图片体系）</h1>
+        <p class="text-sm text-gray-500 mt-1">纯静态演示：手机模拟器可实际点选（三形态仅切换规格 / 紧凑流式列表 / 长名截断选中展开 / 附加项胶囊同款与两列步进 / 组合图推导 / 合计计价）。演示用 rose 色代主题 primary，落地时映射 sn-badge / 令牌体系。</p>
+    </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 xl:grid-cols-[480px_1fr] gap-8 items-start">
+
+    <!-- ============ 手机模拟器 ============ -->
+    <div class="mx-auto w-full max-w-[480px] rounded-[2rem] border-[6px] border-gray-900 bg-white shadow-2xl overflow-hidden"
+        x-data="specDemo()" x-init="init()">
+
+        <!-- 商品头：图 + 标题（模拟蜜雪头图区，衬托选择器所在语境） -->
+        <div class="relative">
+            <div class="aspect-[4/3] w-full" :style="`background:linear-gradient(135deg,#fde68a,#fb923c)`">
+                <div class="w-full h-full flex flex-col items-center justify-center gap-1">
+                    <div class="text-6xl">🧋</div>
+                    <div class="text-white/95 font-medium tracking-wide">手作黑糖鹿丸鲜奶茶</div>
+                </div>
+            </div>
+            <div class="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-transparent"></div>
+        </div>
+
+        <div class="px-4 pb-4 flex flex-col gap-5">
+
+            <!-- 规格组①：杯型（带图，三种形态切换） -->
+            <div class="flex flex-col gap-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="text-sm font-semibold">杯型</span>
+                        <span class="text-xs text-rose-500 font-medium">12</span>
+                    </div>
+                    <!-- 形态切换（对应淘宝「列表 / 大图」切换入口，多一档胶囊） -->
+                    <div class="flex rounded-full bg-gray-100 p-0.5 text-xs" role="tablist">
+                        <button type="button" class="rounded-full px-2.5 py-1 transition-colors"
+                            :class="mode === 'pill' ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-500'"
+                            @click="mode = 'pill'">胶囊</button>
+                        <button type="button" class="rounded-full px-2.5 py-1 transition-colors"
+                            :class="mode === 'list' ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-500'"
+                            @click="mode = 'list'">列表</button>
+                        <button type="button" class="rounded-full px-2.5 py-1 transition-colors"
+                            :class="mode === 'grid' ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-500'"
+                            @click="mode = 'grid'">大图</button>
+                    </div>
+                </div>
+
+                <!-- 形态一：胶囊（蜜雪风格 = 现状 sn-badge；带图规格在胶囊形态下只用文字；长名同样超整行才截断/选中展开） -->
+                <div x-show="mode === 'pill'" class="flex flex-wrap gap-2">
+                    <template x-for="child in specGroups[0].children" :key="child.id">
+                        <button type="button"
+                            class="max-w-full rounded-full px-3.5 py-1.5 text-left text-sm font-medium transition-colors"
+                            :class="{
+                                'bg-rose-500 text-white': isSelected(specGroups[0].id, child.id),
+                                'bg-gray-100 text-gray-700 hover:bg-gray-200': ! isSelected(specGroups[0].id, child.id) && isSelectable(specGroups[0].id, child.id),
+                                'bg-gray-100 text-gray-400 opacity-50 cursor-not-allowed': ! isSelectable(specGroups[0].id, child.id) && ! isSelected(specGroups[0].id, child.id),
+                            }"
+                            :disabled="! isSelectable(specGroups[0].id, child.id) && ! isSelected(specGroups[0].id, child.id)"
+                            :title="child.name"
+                            @click="toggleSpec(specGroups[0].id, child.id)">
+                            <span class="block max-w-full"
+                                :class="isSelected(specGroups[0].id, child.id) ? 'whitespace-normal' : 'truncate'"
+                                x-text="child.name"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- 形态二：列表（淘宝紧凑形态：流式换行、宽度随内容，长名未选截断 / 选中展开） -->
+                <div x-show="mode === 'list'" x-cloak class="flex flex-wrap gap-2">
+                    <template x-for="child in specGroups[0].children" :key="child.id">
+                        <button type="button"
+                            class="inline-flex max-w-full items-center gap-2 rounded-lg border py-1.5 pl-1.5 pr-3 text-left transition-colors"
+                            :class="{
+                                'border-rose-400 bg-rose-50': isSelected(specGroups[0].id, child.id),
+                                'border-gray-200 hover:border-gray-300': ! isSelected(specGroups[0].id, child.id) && isSelectable(specGroups[0].id, child.id),
+                                'border-gray-200 opacity-50 cursor-not-allowed': ! isSelectable(specGroups[0].id, child.id) && ! isSelected(specGroups[0].id, child.id),
+                            }"
+                            :disabled="! isSelectable(specGroups[0].id, child.id) && ! isSelected(specGroups[0].id, child.id)"
+                            :title="child.name"
+                            @click="toggleSpec(specGroups[0].id, child.id)">
+                            <img :src="child.image" :alt="child.name" class="size-10 shrink-0 rounded-md object-cover">
+                            <span class="flex min-w-0 flex-col items-start">
+                                <span class="max-w-full text-sm font-medium leading-5"
+                                    :class="isSelected(specGroups[0].id, child.id) ? 'whitespace-normal text-rose-600' : 'truncate'"
+                                    x-text="child.name"></span>
+                                <span class="text-[11px] leading-4 text-rose-500" x-text="'¥' + child.surchargeLabel"></span>
+                            </span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- 形态三：大图（淘宝形态②：auto-fill 自适应网格，上图下名，选中描边 + 角标；列数随容器宽度） -->
+                <div x-show="mode === 'grid'" x-cloak class="spec-grid grid gap-2">
+                    <template x-for="child in specGroups[0].children" :key="child.id">
+                        <button type="button"
+                            class="relative rounded-lg border p-1 transition-colors"
+                            :class="{
+                                'border-rose-400 bg-rose-50': isSelected(specGroups[0].id, child.id),
+                                'border-gray-200 hover:border-gray-300': ! isSelected(specGroups[0].id, child.id) && isSelectable(specGroups[0].id, child.id),
+                                'border-gray-200 opacity-50 cursor-not-allowed': ! isSelectable(specGroups[0].id, child.id) && ! isSelected(specGroups[0].id, child.id),
+                            }"
+                            :disabled="! isSelectable(specGroups[0].id, child.id) && ! isSelected(specGroups[0].id, child.id)"
+                            @click="toggleSpec(specGroups[0].id, child.id)">
+                            <span class="relative block">
+                                <img :src="child.image" :alt="child.name" class="aspect-square w-full rounded-md object-cover">
+                                <span x-show="isSelected(specGroups[0].id, child.id)"
+                                    class="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-rose-500 text-white shadow">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="size-3"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                                </span>
+                            </span>
+                            <span class="mt-1 block truncate text-center text-xs font-medium" x-text="child.name"></span>
+                            <span class="block text-center text-[11px] text-rose-500" x-text="'¥' + child.surchargeLabel"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- 规格组②③：温度 / 糖度（无图规格：不参与形态切换，恒为胶囊） -->
+            <template x-for="group in specGroups.slice(1)" :key="group.id">
+                <div class="flex flex-col gap-2.5">
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="text-sm font-semibold" x-text="group.name"></span>
+                        <span class="text-xs text-rose-500 font-medium" x-text="group.children.length"></span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="child in group.children" :key="child.id">
+                            <button type="button"
+                                class="max-w-full rounded-full px-3.5 py-1.5 text-left text-sm font-medium transition-colors"
+                                :class="{
+                                    'bg-rose-500 text-white': isSelected(group.id, child.id),
+                                    'bg-gray-100 text-gray-700 hover:bg-gray-200': ! isSelected(group.id, child.id) && isSelectable(group.id, child.id),
+                                    'bg-gray-100 text-gray-400 opacity-50 cursor-not-allowed': ! isSelectable(group.id, child.id) && ! isSelected(group.id, child.id),
+                                }"
+                                :disabled="! isSelectable(group.id, child.id) && ! isSelected(group.id, child.id)"
+                                :title="child.name"
+                                @click="toggleSpec(group.id, child.id)">
+                                <span class="block max-w-full"
+                                    :class="isSelected(group.id, child.id) ? 'whitespace-normal' : 'truncate'"
+                                    x-text="child.name"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- 附加项①：无数量单选（与规格胶囊完全同款，无加号；选中实底反白） -->
+            <div class="flex flex-col gap-2.5">
+                <div class="flex items-baseline gap-1.5">
+                    <span class="text-sm font-semibold" x-text="extras[0].name"></span>
+                    <span class="text-[11px] text-gray-400">单选</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="option in extras[0].options" :key="option.id">
+                        <button type="button"
+                            class="inline-flex max-w-full items-baseline gap-1 rounded-full px-3.5 py-1.5 text-left text-sm font-medium transition-colors"
+                            :class="{
+                                'bg-rose-500 text-white': isExtraSelected(extras[0].id, option.id),
+                                'bg-gray-100 text-gray-700 hover:bg-gray-200': ! isExtraSelected(extras[0].id, option.id) && ! option.sold_out,
+                                'bg-gray-100 text-gray-400 opacity-50 cursor-not-allowed': option.sold_out,
+                            }"
+                            :disabled="option.sold_out"
+                            :title="option.sold_out ? '已售罄' : option.name"
+                            @click="toggleExtraOption(extras[0].id, option.id)">
+                            <span class="min-w-0 max-w-full text-sm leading-5"
+                                :class="isExtraSelected(extras[0].id, option.id) ? 'whitespace-normal' : 'truncate'"
+                                x-text="option.name"></span>
+                            <span class="shrink-0 text-xs opacity-70" x-text="fmt(option.price)"></span>
+                            <span x-show="option.sold_out" class="shrink-0 text-[11px]">已售罄</span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- 附加项②：多份加料（行式 + 步进器；容器 ≥400px 两列、更窄一列——容器查询，PC 购买盒宽时自动两列） -->
+            <div class="flex flex-col gap-2.5">
+                <div class="flex items-baseline gap-1.5">
+                    <span class="text-sm font-semibold" x-text="extras[1].name"></span>
+                    <span class="text-[11px] text-gray-400">可多份</span>
+                </div>
+                <div class="extras-container">
+                    <div class="extras-grid grid gap-2">
+                        <template x-for="option in extras[1].options" :key="option.id">
+                            <div class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition-colors"
+                                :class="{
+                                    'border-rose-300 bg-rose-50': isExtraSelected(extras[1].id, option.id),
+                                    'border-gray-200': ! isExtraSelected(extras[1].id, option.id) && ! option.sold_out,
+                                    'border-gray-200 opacity-50': option.sold_out,
+                                }">
+                                <div class="flex min-w-0 flex-1 items-baseline gap-1.5">
+                                    <span class="truncate text-sm font-medium" :title="option.name" x-text="option.name"></span>
+                                    <span class="shrink-0 text-xs text-rose-500" x-text="fmt(option.price)"></span>
+                                    <span x-show="option.sold_out" class="shrink-0 rounded-full bg-gray-400 px-1.5 py-0.5 text-[10px] text-white">售罄</span>
+                                </div>
+                            <!-- 多份：未选 = 加号；选中 = 步进器（减到 0 取消），遵守 min/max -->
+                            <button type="button" x-show="! option.sold_out && ! isExtraSelected(extras[1].id, option.id)"
+                                class="grid size-7 shrink-0 place-items-center rounded-full border border-rose-400 text-rose-500 hover:bg-rose-50"
+                                @click="toggleExtraOption(extras[1].id, option.id)">
+                                <svg viewBox="0 0 20 20" fill="currentColor" class="size-4"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>
+                            </button>
+                            <div x-show="isExtraSelected(extras[1].id, option.id)" x-cloak class="flex shrink-0 items-center gap-2.5">
+                                <button type="button"
+                                    class="grid size-7 place-items-center rounded-full border transition-colors"
+                                    :class="extraNums[option.id] <= (option.limit_min_num || 1)
+                                        ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                                        : 'border-rose-400 text-rose-500 hover:bg-rose-50'"
+                                    @click="stepExtra(extras[1], option, -1)">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clip-rule="evenodd"/></svg>
+                                </button>
+                                <span class="w-5 text-center text-sm font-semibold tabular-nums" x-text="extraNums[option.id] ?? 0"></span>
+                                <button type="button"
+                                    class="grid size-7 place-items-center rounded-full transition-colors"
+                                    :class="extraNums[option.id] >= (option.limit_max_num || 99)
+                                        ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                                        : 'border-rose-400 text-rose-500 hover:bg-rose-50'"
+                                    @click="stepExtra(extras[1], option, 1)">
+                                    <svg viewBox="0 0 20 20" fill="currentColor" class="size-4"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                    </div><!-- /extras-grid 容器 ≥400px 两列、更窄一列 -->
+                </div><!-- /extras-container -->
+            </div>
+
+            <!-- 数量 -->
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-semibold">购买数量</span>
+                <div class="flex items-center gap-3">
+                    <button type="button" class="grid size-8 place-items-center rounded-full border transition-colors"
+                        :class="productNum <= 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-rose-400 text-rose-500 hover:bg-rose-50'"
+                        :disabled="productNum <= 1" @click="productNum--">
+                        <svg viewBox="0 0 20 20" fill="currentColor" class="size-4"><path fill-rule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clip-rule="evenodd"/></svg>
+                    </button>
+                    <span class="w-6 text-center text-base font-semibold tabular-nums" x-text="productNum"></span>
+                    <button type="button" class="grid size-8 place-items-center rounded-full bg-rose-500 text-white hover:bg-rose-600" @click="productNum++">
+                        <svg viewBox="0 0 20 20" fill="currentColor" class="size-4"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部结算条：组合图自动推导（缩略图）+ 已选回显 + 合计 -->
+        <div class="sticky bottom-0 border-t border-gray-100 bg-white/95 px-4 py-3 backdrop-blur">
+            <div class="flex items-center gap-3">
+                <!-- 组合图：首个带图规格组选中值图片（变体可覆盖，见说明⑤） -->
+                <img :src="variantImage" alt="已选组合图" class="size-12 shrink-0 rounded-lg border border-gray-200 object-cover">
+                <div class="min-w-0 flex-1">
+                    <div class="truncate text-sm" x-show="selectedText">
+                        <span class="text-gray-400">已选：</span><span class="font-medium" x-text="selectedText || '请选择规格'"></span>
+                    </div>
+                    <div class="mt-0.5 flex items-baseline gap-1.5">
+                        <span class="text-lg font-bold text-rose-500" x-text="fmt(totalMinor)"></span>
+                        <span x-show="matchedVariant?.stock !== null && matchedVariant?.stock <= 3" x-cloak
+                            class="text-[11px] text-orange-500" x-text="'仅剩 ' + matchedVariant?.stock + ' 件'"></span>
+                        <span x-show="extrasText" x-cloak class="truncate text-[11px] text-gray-400" x-text="extrasText"></span>
+                    </div>
+                </div>
+                <button type="button" class="shrink-0 rounded-full bg-rose-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-rose-600">
+                    立即购买
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 形态说明 ============ -->
+    <div class="flex flex-col gap-4">
+
+        <section class="rounded-xl border border-gray-200 bg-white p-5">
+            <h2 class="text-base font-bold">① 规格选择：三种形态（对应参考截图）</h2>
+            <table class="mt-3 w-full text-sm">
+                <thead><tr class="text-left text-xs text-gray-400">
+                    <th class="pb-2 font-medium">形态</th><th class="pb-2 font-medium">参考</th><th class="pb-2 font-medium">样式</th><th class="pb-2 font-medium">适用</th>
+                </tr></thead>
+                <tbody class="align-top">
+                    <tr class="border-t border-gray-100">
+                        <td class="py-2 pr-3 font-medium">胶囊</td>
+                        <td class="py-2 pr-3">蜜雪冰城</td>
+                        <td class="py-2 pr-3 text-gray-600">纯文字 pill，选中实底反白（= 现状 sn-badge / sn-badge-solid-primary）</td>
+                        <td class="py-2 text-gray-600">无图规格的兜底形态；紧凑、扫读快</td>
+                    </tr>
+                    <tr class="border-t border-gray-100">
+                        <td class="py-2 pr-3 font-medium">列表</td>
+                        <td class="py-2 pr-3">淘宝（紧凑）</td>
+                        <td class="py-2 pr-3 text-gray-600">流式换行、宽度随内容（短选项一行摆多个）；小图 40px + 名称/价格；名称<b>超过整行宽度才截断「…」</b>（title 悬停全名），<b>选中展开换行全显</b>；选中 = 描边 + 浅底</td>
+                        <td class="py-2 text-gray-600">有图规格的默认推荐（选项多少都放得下，PC 不空旷）</td>
+                    </tr>
+                    <tr class="border-t border-gray-100">
+                        <td class="py-2 pr-3 font-medium">大图</td>
+                        <td class="py-2 pr-3">淘宝形态②</td>
+                        <td class="py-2 pr-3 text-gray-600">auto-fill 自适应网格：卡宽钳 ~120–160px，列数随容器（436px 容器 → 3 列、600 → 4 列、750 → 5 列，淘宝 PC 同款）；正方形图 + 名称/加价，选中描边 + 图上角标</td>
+                        <td class="py-2 text-gray-600">颜值驱动品类（花束/礼盒/甜品），图即卖点</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="mt-3 text-sm text-gray-600">规则：<b>规格组级</b>配置形态，无图规格组恒为胶囊（与淘宝一致——尺码等无图维度不切形态）；同一产品内可混排（杯型用大图、温度用胶囊）。形态切换入口放在规格组标题右侧（淘宝同款位置），默认形态由后台规格组配置决定。</p>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-white p-5">
+            <h2 class="text-base font-bold">② 不可选置灰的联动（演示数据内置）</h2>
+            <p class="mt-2 text-sm text-gray-600">纪念杯仅「正常冰」可选 → 选了「少冰」后纪念杯置灰；「热饮 × 超大杯」「热饮 × 全糖」无组合 → 选热饮后超大杯/全糖置灰。算法与现有 product-buy.js 的 isSelectable 完全一致（变体矩阵反查），图片化不改变联动逻辑，只换选项的「皮」。</p>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-white p-5">
+            <h2 class="text-base font-bold">③ 附加项：按是否带数量分化（形态切换只作用于规格，附加项不参与）</h2>
+            <ul class="mt-2 list-disc space-y-1.5 pl-5 text-sm text-gray-600">
+                <li><b>无数量组</b>：与规格胶囊<b>完全同款</b>（选中实底反白，无加号无行卡片），蜜雪同款做法——用户无需区分「这是规格还是附加项」，交互心智一致；价格小字跟在名称后。</li>
+                <li><b>有数量组</b>：行式卡片 + 步进器（未选只见加号；点击后变「− 数量 +」，减到下限即取消，上下限到达时按钮置灰）；<b>容器宽度自适应</b>——容器 ≥400px 一行两个（PC 购买盒常态），更窄一行一个（窄手机），容器查询实现与断点无关。</li>
+                <li><b>文字太多</b>：胶囊/列表选项宽度随内容，名称<b>超过整行宽度才截断</b>（… + title 悬停全名），选中展开换行全显——不到整行不截断；行式卡片（固定列宽）名称 truncate 弹性收缩、价格/步进器固定不挤占。</li>
+                <li><b>售罄</b>：胶囊置灰不可点但仍可见（尾缀「已售罄」）；行式整行置灰 + 灰色「售罄」徽章。</li>
+            </ul>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-white p-5">
+            <h2 class="text-base font-bold">④ 底部结算条：已选回显</h2>
+            <p class="mt-2 text-sm text-gray-600">左缩略图（= 组合推导图）+ 「已选：大杯 / 少冰 / 五分糖」+ 附加项摘要（珍珠×2 · 奶油顶×1）+ 合计价（变体价 + 附加项，× 数量）+ 低库存提示（≤3 件橙色提醒，来自变体 stock）。sticky 吸底，随时可见当前选择全貌——对应参考图中「已选 X 款」的回显区。</p>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-white p-5">
+            <h2 class="text-base font-bold">⑤ T10 落地映射（实现要点）</h2>
+            <ul class="mt-2 list-disc space-y-1.5 pl-5 text-sm text-gray-600">
+                <li><b>规格值图</b>：specSchema 契约里 <code>specs[].children[].image</code> 字段已就绪（现返回 null），T10 只需后台规格值表单加上传 + 前端消费。</li>
+                <li><b>组合图自动推导</b>：底部缩略图 = 首个带图规格组的<b>当前选中值</b>图片，全部选完命中变体后优先取<b>变体级覆盖图</b>（variant.image，后台可选填，不填自动推导）——商户零配置即可有组合图，特殊组合可精确覆盖。</li>
+                <li><b>形态配置</b>：产品级（或规格组级）加 <code>selector_style: pill | list | grid</code>，默认 pill 兼容现状；有图且未配置时建议 list（淘宝默认逻辑）。</li>
+                <li><b>样式映射</b>：胶囊 → 现有 <code>sn-badge / sn-badge-solid-primary</code>；列表/大图卡片 → 新增 <code>sn-spec-option / sn-spec-option-selected</code> 工具类（消费 --sn-radius-card / primary 令牌），不硬编码颜色。</li>
+                <li><b>附加项改造</b>：无数量组复用规格胶囊类（sn-badge / sn-badge-solid-primary）；有数量组行式卡片 + Alpine 步进器（逻辑复用现有 selectedExtras/extraNums），容器查询 @[400px] 两列。形态切换仅规格，附加项固定形态。</li>
+            </ul>
+        </section>
+
+        <section class="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+            <p class="font-bold">演示说明</p>
+            <p>· 形态切换（胶囊 / 列表 / 大图）<b>仅作用于规格</b>；附加项不参与切换：无数量 = 规格胶囊同款，有数量 = 行式步进器（容器 ≥400px 两列）。</p>
+            <p>· 列表形态为紧凑流式：选项宽度随内容，短选项一行多个；名称超过整行宽度才截断、选中展开全显——「纪念杯·情人节限定联名款」不到整行即全显，「周边联名保温杯…」超过整行演示截断。</p>
+            <p>· 可实际操作：选热饮看置灰联动、选超大杯 + 去冰触发「仅剩 2 件」、附加项点选看合计；数据结构与算法即 specSchema v1 + product-buy.js。</p>
+        </section>
+    </div>
+</main>
+
+<script>
+// 占位图（SVG data URI，离线可用；线上为真实规格值图）
+function svgImg(label, emoji, c1, c2) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="200" height="200" fill="url(#g)"/><text x="100" y="108" font-size="58" text-anchor="middle">${emoji}</text><text x="100" y="162" font-size="20" text-anchor="middle" fill="rgba(255,255,255,.95)" font-family="sans-serif" font-weight="600">${label}</text></svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+function specDemo() {
+    // specSchema v1 同构数据（价格单位：分）
+    const specGroups = [
+        { id: 1, name: '杯型', children: [
+            { id: 11, name: '中杯 500ml', image: svgImg('中杯', '🥤', '#fdba74', '#f97316'), surcharge: 0 },
+            { id: 12, name: '大杯 700ml', image: svgImg('大杯', '🧋', '#86efac', '#22c55e'), surcharge: 200 },
+            { id: 13, name: '超大杯 1L', image: svgImg('超大杯', '🍺', '#93c5fd', '#3b82f6'), surcharge: 400 },
+            { id: 14, name: '纪念杯·情人节限定联名款', image: svgImg('纪念杯', '🎁', '#f9a8d4', '#ec4899'), surcharge: 600 },
+            { id: 15, name: '周边联名保温杯·限定浮雕外观附赠卡通挂坠与全套贴纸礼盒（不可选热饮）', image: svgImg('保温杯', '🏆', '#c4b5fd', '#8b5cf6'), surcharge: 800 },
+        ]},
+        { id: 2, name: '温度', children: [
+            { id: 21, name: '正常冰' }, { id: 22, name: '少冰' }, { id: 23, name: '去冰' }, { id: 24, name: '热饮' },
+        ]},
+        { id: 3, name: '糖度', children: [
+            { id: 31, name: '全糖' }, { id: 32, name: '七分糖' }, { id: 33, name: '五分糖' }, { id: 34, name: '三分糖' }, { id: 35, name: '无糖' },
+        ]},
+    ];
+    specGroups[0].children.forEach((c) => c.surchargeLabel = (12 + c.surcharge / 100).toFixed(2));
+
+    // 变体矩阵：程序生成，排除无组合（演示置灰联动）
+    // 规则：纪念杯(14) 仅 正常冰(21)；保温杯(15) 不可热饮；超大杯(13) × 热饮(24) 无；热饮(24) × 全糖(31) 无；超大杯+去冰 库存 2
+    const variants = [];
+    let vid = 1;
+    for (const cup of specGroups[0].children) {
+        for (const temp of specGroups[1].children) {
+            for (const sugar of specGroups[2].children) {
+                if (cup.id === 14 && temp.id !== 21) continue;
+                if (cup.id === 15 && temp.id === 24) continue;
+                if (cup.id === 13 && temp.id === 24) continue;
+                if (temp.id === 24 && sugar.id === 31) continue;
+                variants.push({
+                    id: vid++, spec_ids: [cup.id, temp.id, sugar.id],
+                    price: 1200 + cup.surcharge,
+                    stock: (cup.id === 13 && temp.id === 23) ? 2 : null,
+                });
+            }
+        }
+    }
+
+    const extras = [
+        { id: 101, name: '加一份主角', type: 'single', is_num: false, options: [
+            { id: 1011, name: '紫薯波波', price: 300, sold_out: false, is_default: true },
+            { id: 1012, name: '厚切芝士奶盖（每日限量手作·只用进口芝士隔水现熬八小时）', price: 300, sold_out: false },
+            { id: 1013, name: '生椰冻', price: 200, sold_out: true },
+        ]},
+        { id: 102, name: '加料（可多份）', type: 'multiple', is_num: true, options: [
+            { id: 1021, name: '手熬黑糖珍珠（每日现熬）', price: 300, sold_out: false, limit_min_num: 1, limit_max_num: 5 },
+            { id: 1022, name: '燕麦', price: 200, sold_out: false, limit_min_num: 1, limit_max_num: 3 },
+            { id: 1023, name: '奶油顶', price: 400, sold_out: false, limit_min_num: 1, limit_max_num: 2 },
+            { id: 1024, name: '马蹄爆爆珠', price: 300, sold_out: true, limit_min_num: 1, limit_max_num: 3 },
+        ]},
+    ];
+
+    return {
+        mode: 'list',           // pill | list | grid（默认列表：有图规格组的推荐形态）
+        specGroups, variants, extras,
+        selected: {},           // parentId => childId
+        selectedExtras: {},     // extraGroupId => optionId[]
+        extraNums: {},          // optionId => num
+        productNum: 1,
+
+        init() {
+            // is_default 且未售罄的附加项预选（同线上 init 逻辑）
+            this.extras.forEach((group) => {
+                group.options.forEach((option) => {
+                    if (option.is_default && ! option.sold_out) {
+                        this.selectExtraOption(group, option);
+                    }
+                });
+            });
+        },
+
+        fmt(minor) { return '¥' + (minor / 100).toFixed(2); },
+
+        // ---- 规格（算法与线上 product-buy.js 一致）----
+        isSelectable(parentId, childId) {
+            const constraints = [];
+            Object.keys(this.selected).forEach((pid) => {
+                if (Number(pid) !== parentId) constraints.push(this.selected[pid]);
+            });
+            return this.variants.some((v) =>
+                v.spec_ids.includes(childId)
+                && constraints.every((specId) => v.spec_ids.includes(specId)));
+        },
+        isSelected(parentId, childId) { return this.selected[parentId] === childId; },
+        toggleSpec(parentId, childId) {
+            if (this.selected[parentId] === childId) delete this.selected[parentId];
+            else this.selected[parentId] = childId;
+        },
+        get matchedVariant() {
+            if (! this.specGroups.every((group) => this.selected[group.id])) return null;
+            const ids = this.specGroups.map((g) => this.selected[g.id]).sort((a, b) => a - b);
+            return this.variants.find((v) => {
+                const vIds = [...v.spec_ids].sort((a, b) => a - b);
+                return vIds.length === ids.length && vIds.every((id, i) => id === ids[i]);
+            }) ?? null;
+        },
+
+        // ---- 附加项 ----
+        extraGroup(groupId) { return this.extras.find((g) => g.id === groupId); },
+        extraOption(groupId, optionId) { return this.extraGroup(groupId)?.options.find((o) => o.id === optionId) ?? null; },
+        isExtraSelected(groupId, optionId) { return (this.selectedExtras[groupId] || []).includes(optionId); },
+        selectExtraOption(group, option) {
+            if (group.type === 'single') this.selectedExtras[group.id] = [option.id];
+            else this.selectedExtras[group.id] = [...(this.selectedExtras[group.id] || []), option.id];
+            if (group.is_num) this.extraNums[option.id] = option.limit_min_num || 1;
+        },
+        toggleExtraOption(groupId, optionId) {
+            const option = this.extraOption(groupId, optionId);
+            if (! option || option.sold_out) return;
+            if (this.isExtraSelected(groupId, optionId)) {
+                this.selectedExtras[groupId] = this.selectedExtras[groupId].filter((id) => id !== optionId);
+            } else {
+                this.selectExtraOption(this.extraGroup(groupId), option);
+            }
+        },
+        stepExtra(group, option, delta) {
+            const min = option.limit_min_num || 1;
+            const max = option.limit_max_num || 99;
+            const next = (this.extraNums[option.id] || min) + delta;
+            if (next < min) {   // 减到下限以下 = 取消选择
+                this.selectedExtras[group.id] = this.selectedExtras[group.id].filter((id) => id !== option.id);
+                return;
+            }
+            if (next <= max) this.extraNums[option.id] = next;
+        },
+
+        // ---- 回显 / 计价 ----
+        get selectedText() {
+            return this.specGroups
+                .filter((g) => this.selected[g.id])
+                .map((g) => g.children.find((c) => c.id === this.selected[g.id])?.name)
+                .filter(Boolean)
+                .join(' / ');
+        },
+        /** 组合图自动推导：首个带图规格组选中值图（变体覆盖图优先，T10 实现 variant.image ?? 推导图） */
+        get variantImage() {
+            const group = this.specGroups.find((g) => g.children.some((c) => c.image));
+            if (! group || ! this.selected[group.id]) return svgImg('黄桃果霸', '🧋', '#fde68a', '#fb923c');
+            return group.children.find((c) => c.id === this.selected[group.id])?.image;
+        },
+        get extrasText() {
+            const parts = [];
+            Object.entries(this.selectedExtras).forEach(([groupId, optionIds]) => {
+                const group = this.extraGroup(Number(groupId));
+                optionIds.forEach((optionId) => {
+                    const option = this.extraOption(Number(groupId), optionId);
+                    if (! option) return;
+                    const num = group?.is_num ? this.extraNums[optionId] : 1;
+                    parts.push(num > 1 ? `${option.name}×${num}` : option.name);
+                });
+            });
+            return parts.join(' · ');
+        },
+        get extrasTotalMinor() {
+            let total = 0;
+            Object.entries(this.selectedExtras).forEach(([groupId, optionIds]) => {
+                const group = this.extraGroup(Number(groupId));
+                optionIds.forEach((optionId) => {
+                    const option = this.extraOption(Number(groupId), optionId);
+                    if (option) total += option.price * (group?.is_num ? (this.extraNums[optionId] ?? 1) : 1);
+                });
+            });
+            return total;
+        },
+        get totalMinor() {
+            return ((this.matchedVariant?.price ?? 1200) + this.extrasTotalMinor) * this.productNum;
+        },
+    };
+}
+</script>
+
+</body>
+</html>

@@ -9,6 +9,7 @@ use Wsmallnews\Product\Livewire\Components\Product\Product as ProductComponent;
 use Wsmallnews\Product\Models\Extra;
 use Wsmallnews\Product\Models\ExtraItem;
 use Wsmallnews\Product\Models\Product;
+use Wsmallnews\Product\Support\ExtraItemService;
 use Wsmallnews\Product\Support\ExtraManager;
 use Wsmallnews\Product\Support\ProductSpecService;
 
@@ -241,4 +242,85 @@ it('详情组件：specSchema.extras 结构与 buy 事件携带附加项', funct
                 ['id' => $extras['cup']->id, 'children' => [['id' => $extras['large']->id]]],
             ];
     });
+});
+
+it('详情组件：步进器双形态渲染（附加项 bare 减到下限取消 / 商品数量 control 输入居中）', function () {
+    $extras = createExtraLibrary();
+    $product = createProductWithExtras($extras);
+
+    $component = livewire(ProductComponent::class, ['scopeType' => 'sn-test', 'scopeId' => 0, 'id' => $product->id]);
+
+    // schema：变体输出组合图节点（image，未指定为 null）；非库存型 stock 输出 null（低库存提示仅库存型生效）
+    $component->assertViewHas('specSchema', fn (array $schema) => collect($schema['variants'])->every(
+        fn (array $variant) => array_key_exists('image', $variant) && $variant['image'] === null && $variant['stock'] === null
+    ));
+
+    $html = $component->html();
+
+    // 步进器逻辑已迁 support 资产组件（x-load-src 按需加载），不再内联 @assets 全局函数
+    expect($html)->toContain('sn-support-components-number-stepper')
+        ->and($html)->toContain('numberStepper({')
+        ->not->toContain('function numberManager');
+
+    // 附加项（is_num 组的 2 个可售选项；售罄选项不渲染步进器）：bare 裸步进器（纯展示数字）+ 减到下限取消监听
+    expect(substr_count($html, 'sn-stepper-min'))->toBe(2)
+        ->and($html)->toContain('x-text="currentVal"')
+        ->and($html)->toContain('rounded-full border border-primary-500/50');
+
+    // 商品数量：control 形态输入框文字居中 + 边界禁用置灰绑定（minus 到下限 / plus 到上限）
+    expect($html)->toContain('text-center')
+        ->and($html)->toContain('x-bind:disabled="currentVal <= minVal"')
+        ->and($html)->toContain('x-bind:disabled="currentVal >= maxVal"');
+});
+
+// ========================= ExtraItemService（双层表单状态转换） =========================
+
+it('ExtraItemService：回填按组聚合、保存拍平 diff、软删选项挂载保留', function () {
+    $extras = createExtraLibrary();
+    $product = createProductWithExtras($extras);       // 珍珠(覆盖2.50)/椰果/芝士/大杯/中杯 挂载
+
+    // 回填：挂载行按组聚合成双层结构（覆盖价 Money → 元串）
+    $state = ExtraItemService::toFormState($product->fresh());
+    expect($state['extra_groups'])->toHaveCount(2)
+        ->and($state['extra_groups'][0]['group_id'])->toBe($extras['toppings']->id)
+        ->and(collect($state['extra_groups'][0]['options'])->pluck('extra_id')->values()->all())
+        ->toBe([$extras['pearl']->id, $extras['coconut']->id, $extras['cheese']->id])
+        ->and(collect($state['extra_groups'][0]['options'])->firstWhere('extra_id', $extras['pearl']->id)['price_override'])->toBe('2.50')
+        ->and($state['extra_groups'][1]['group_id'])->toBe($extras['cup']->id);
+
+    // 保存：换组重排（只挂 珍珠×2.50 + 中杯，去掉椰果/芝士/大杯）
+    ExtraItemService::save($product->fresh(), [
+        'extra_groups' => [
+            ['group_id' => $extras['cup']->id, 'options' => [['extra_id' => $extras['middle']->id, 'is_default' => true, 'price_override' => null]]],
+            ['group_id' => $extras['toppings']->id, 'options' => [
+                ['extra_id' => $extras['pearl']->id, 'is_default' => false, 'price_override' => '3.00'],
+            ]],
+            ['group_id' => $extras['cup']->id, 'options' => []],       // 空组自然消失
+        ],
+    ]);
+
+    $items = $product->fresh()->extraItems()->orderBy('order_column')->get();
+    expect($items)->toHaveCount(2)
+        ->and($items[0]->extra_id)->toBe($extras['middle']->id)
+        ->and($items[0]->is_default)->toBeTrue()
+        ->and($items[1]->extra_id)->toBe($extras['pearl']->id)
+        ->and(sn_money()->minor($items[1]->price_override))->toBe(300);      // 覆盖价更新 2.50 → 3.00
+
+    // 软删选项的挂载行：表单状态不含它时保留（库恢复即回归）
+    $extras['pearl']->delete();
+    ExtraItemService::save($product->fresh(), [
+        'extra_groups' => [
+            ['group_id' => $extras['cup']->id, 'options' => [['extra_id' => $extras['middle']->id, 'is_default' => true, 'price_override' => null]]],
+        ],
+    ]);
+
+    $kept = $product->fresh()->extraItems()->pluck('extra_id')->all();
+    expect($kept)->toContain($extras['middle']->id, $extras['pearl']->id)     // 软删珍珠的挂载行保留
+        ->not->toContain($extras['large']->id);                               // 上架中但未选的删除
+
+    // 恢复软删选项 → 回填重新出现
+    $extras['pearl']->fresh()->restore();
+    $state2 = ExtraItemService::toFormState($product->fresh());
+    $toppingsGroup = collect($state2['extra_groups'])->firstWhere('group_id', $extras['toppings']->id);
+    expect(collect($toppingsGroup['options'])->pluck('extra_id')->values()->all())->toContain($extras['pearl']->id);
 });

@@ -21,3 +21,7 @@ scopeable 资源（page/post 等）的 slug 类唯一字段必须用 Filament �
 
 ## scopedUnique 多租户机制：panel 全局 scope 自动隔离 team，ignoreRecord 默认 true
 scopedUnique 的多租户行为（已用探针测试验证）：panel 注册 tenant 后，Panel::boot 会给每个 resource 的模型注册全局 scope（scope 名如 admin_tenancy），scopedUnique 用的 $model::query() 自动带 team 条件——此时 modifyQueryUsing 里 scopeable 与 snScope 行为等价（snScope 的 scopeTenant 只是重复条件，双保险）。无租户 panel（现状）下全局 scope 不存在，snScope 的 scopeTenant 退化为 whereNull('team_id')，比 scopeable 更防御。ignoreRecord 无需显式传：Filament 默认 shouldUniqueValidationIgnoreRecordByDefault = true（编辑自动排除自身主键）。注意 livewire() 直连测试不走 IdentifyTenant 中间件，组件 mount 后须手动重设 Filament::setCurrentPanel + setTenant($tenant, isQuiet: true)；且 Model::create 在 panel 上下文会触发 observeTenancyModelCreation 把显式传的 team_id 覆盖为当前租户，构造跨租户测试数据需 withoutEvents。
+
+## Blade 视图图标一律 Heroicon 枚举传参，禁止字符串图标名
+
+`<x-filament::icon :icon="Heroicon::OutlinedPhoto" />`，不用 `icon="heroicon-o-photo"`（可读性/重构安全/静态检查）。枚举两种形态：`Outlined*` case 值即 `o-*`（恒定描边风格）；**基础 case**（Check/Minus/Plus 等）按尺寸自动映射——`<x-filament::icon>` 默认 Medium → `heroicon-m-*`，传 `size` 可切 c-/s-（Heroicon::getIconForSize）。注意 `:icon` 是组件 prop 绑定（PHP 侧），枚举常量合法；含 Alpine 表达式的动态属性才需 x-bind: 前缀。

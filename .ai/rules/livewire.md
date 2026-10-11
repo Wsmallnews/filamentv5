@@ -30,3 +30,15 @@ Livewire 目录分层约定：Components/ 目录下全部是内嵌组件——�
 
 ## 基础扩展包资源由消费模块注册：数据落消费模块 main scope，嵌入组件传消费模块 scopeable
 基础扩展包（product 等不独立访问的领域包）自身不从 panel_register 注册后台资源——由消费模块（shop）在自己的 panel_register.resources 声明 ProductResource，注册即归属 module_id = sn-shop，后台创建/查询的产品落 sn-shop main scopeable（与前台一致）。跨模块嵌入组件时 :scope-type/:scope-id 传消费模块 scopeable（shop 页面直接传 shop Base 的 getScopeable()，搜索注册同理）；详情/跳转链接由消费方以路由名 prop 传入（products 组件 hrefRoute，参数名与 preference 包一致），领域包自身不设路由、不在组件里生成跳转链接；购买等交易动作用事件派发（product-buy），由消费页面监听后跳转。
+
+## step-number 双形态：control 表单皮（输入居中）/ bare 裸步进器；承载可换行文本的按钮必须显式 text-left
+
+support `input/step-number` 经 `variant` prop 切形态：`control`（默认，表单皮 + 可编辑输入框，文字 `text-center`，商品数量用）；`bare`（裸 `− n +`，样式经 `button-class`/`value-class` 由调用处传，`editable=false` 纯展示，紧凑行内用）。逻辑在资产组件 `sn-support-components-number-stepper`（numberStepper），**减到下限再点派发 `sn-stepper-min` 事件**——「减到下限 = 取消选择」类业务语义由调用方 `@sn-stepper-min` 接（商品附加项已接），加到上限 `:disabled` 钳制；组件只管数字钳制。另注意 UA 默认 `button { text-align: center }`：任何内容可能换行的按钮（规格胶囊/卡片、选中展开长名）必须显式 `text-left`，否则换行第二行居中。
+
+## Blade 同一标签禁止「静态 class + @class」双属性：后者生成的第二个 class 属性被浏览器丢弃
+
+`@class([...])` 指令会渲染一个完整的 `class="..."` 属性；若同一标签已手写静态 `class="..."`，HTML 只保留先出现的属性，**@class 的条件类静默丢失**（症状：条件样式"从没生效过"，如售罄置灰、选中 ring）。动态条件类要么并入 `:class="{...}"`（Alpine 场景，键为类名值为布尔表达式），要么把静态类作为无键项合并进 `@class` 数组（无键项 = 恒定基线）。排查命令：`grep -rn -B2 '@class(\[' addons/*/resources/views/` 后人工核对上方是否有未闭合标签的 class=。
+
+## filament 组件标签上的 Alpine 动态属性用 x-bind: 前缀，且 @if 不得写在组件标签属性区
+
+`<x-filament::icon-button :disabled="currentVal <= minVal">` 的 `:disabled` 会被 Blade 当 **prop 绑定做 PHP 求值**（Undefined constant currentVal）——Alpine 表达式必须写 `x-bind:disabled="..."`（原生 HTML 元素上两者等价，组件标签上只有 x-bind: 穿透）。另外 `@if (...) ... @endif` 不能插在组件标签的属性区：会打断 Blade 组件解析，整个标签按原始文本输出（页面上出现未编译的 `<x-filament::...>` 字面量）——条件属性要写成两个完整标签二选一（step-number control 前缀按钮范式）。

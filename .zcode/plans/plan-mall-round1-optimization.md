@@ -19,7 +19,7 @@
 | T7 | P1 | OrderPipes 逻辑解释（说明文档） | 说明 | 📋 见本文 §三 |
 | T8 | P2 | 附加属性（小料/增值服务）完整可实施方案 | 实施 | ✅ 已完成（2026-10-09，extra 命名定稿） |
 | T9 | P2 | 前端规格选择（PC 本地计算）+ uniapp 接口版综合方案 | 实施 | ✅ 已完成（含 F1 + 两个连带根因修复） |
-| T10 | P2 | 规格图片体系优化（规格值图 vs 组合图 / 订单快照 / plain vs media） | 方案 | ⏸️ **待用户确认后动工** |
+| T10 | P2 | 规格图片体系优化（规格值图 vs 组合图 / 订单快照 / plain vs media） | 方案+demo 定稿；**前端形态已落地** | 🎨 前端完成（产品 7 演示），后台部分待做（组合图落库推导 / selector_style 配置 / assetPicker） |
 | T11 | P2 | 媒体库（spatie/laravel-medialibrary）完整方案 | 方案 | ⏸️ **待用户确认后动工** |
 
 排序依据：bug 和「现在就必须有」的功能先行（T1/T2）；小改动 + 规则固化次之（T3-T5）；四个大方案均为「先分析、确认后动工」（T8-T11），分析本身即本轮交付物。
@@ -234,6 +234,9 @@ OrderPipes::scene('product')->stage(Stage::CREATING)->prepend('stock-lock', Lock
 43. **附加项域术语 extra + 售罄双字段**（2026-10-09，T8）：弃 addon（插件歧义）用 extra（外卖行业标准词）；选项粒度挂载（覆盖价/子集为普通列，无 JSON 嵌套）；临时售罄 = sold_out_until 日期惰性恢复（估清语义），永久下架 = status；价格覆盖空值实时跟随库价、有值商品固定，订单照常快照。
 44. **F1 完整形态：SPA morph 下内联脚本一律不执行，宿主跳转监听必须 PHP #[On] + redirect**（2026-10-09）：wire:navigate 站内跳转经 morph 更新页面，视图内 @once/@assets 内联脚本（页面级同样中招）不执行；宿主对事件的跳转响应统一 #[On] + redirect()（shop gotoConfirm/gotoCashier 范式），组件交互选服务端 wire:click（pay-methods choose 范式）；payload 键名与监听方法参数名精确匹配（order_sn → $order_sn，不自动驼峰）。规则定稿 component-events.md。
 45. **Filament 类引入规范 + 软删级联修复**（2026-10-10 用户拍板/反馈）：Forms/Schemas 目录导入（use FilamentForms 后 FormsComponentsXxx 前缀引用，同目录多类同理如模型 casts 的 Enums）；其余顶部 use 直用；Get/Set 正确类为 FilamentSchemasComponentsUtilities{Get,Set}（规则沉淀 filament.md）。Extra::booted 删除级联修复：forceDeleting() 是注册事件回调的静态方法（实例判断是 protected 属性），级联用 deleting/forceDeleting/restored 三钩子分别对 children 软删/强删/恢复。
+46. **T10 选择器形态定稿（demo public/demo/spec-selector.html 多轮评审）**（2026-10-10 用户确认）：三形态仅作用于规格——胶囊（= sn-badge 现状）/ 列表（淘宝紧凑流式：宽度随内容、短项同行多个）/ 大图（auto-fill `repeat(auto-fill, minmax(min(120px,100%),1fr))`，卡宽钳 120–160px，列数随容器：436px→3 列、600→4、750→5，不写死 grid-cols-3）；无图规格组恒胶囊；附加项不参与形态切换——无数量组 = 规格胶囊同款（无加号），有数量组 = 行式 + 步进器（容器 ≥400px 两列、更窄一列）。
+47. **长名截断规则：超整行才截断，选中展开**（2026-10-10 用户纠偏）：选项按钮 `max-w-full`（上限=流式容器行宽，不是固定 max-w）+ 名称 `truncate`；选中态切 `whitespace-normal` 换行全显；按钮必须显式 `text-left`（UA 默认 `button{text-align:center}` 会让换行第二行居中）；悬停 title 全名。
+48. **step-number 双形态 variant + sn-stepper-min 事件**（2026-10-10 用户确认实施）：support `input/step-number` 加 `variant` prop——control（表单皮，输入框 `text-center`，商品数量用）/ bare（裸 `− n +`，buttonClass/valueClass 由调用处传样式，附加项用，`editable=false` 纯展示）；逻辑迁 `sn-support-components-number-stepper` 资产（对齐 F1/40 号决策，废弃 @assets 内联 numberManager）；减到下限派发 `sn-stepper-min`（父级接「减到下限 = 取消选择」，附加项已接入），加到上限 :disabled 钳制；组件只管数字钳制不含业务语义。
 
 ## 六、验证基准与结果
 
@@ -261,3 +264,18 @@ OrderPipes::scene('product')->stage(Stage::CREATING)->prepend('stock-lock', Lock
 **F1-b（已修）：boot() 参数快照陷阱**——boot() 的 setParams 捕获 hydration 早期值，同一提交请求内 defer model 更新的属性（remark）不进管道参数（真机表现：备注提交后落库为空）。修复：`syncOrderParams()` 在 boot 与 submitOrder 各刷一遍。**收银台 snPayMethods（pay 包嵌套 Alpine choose）仍属此类，阶段 D 收银台前端消费时按 F1 模式重构**。
 
 **遗留演示数据**：dev 库累计 8 笔未支付测试订单（member 3，咖啡豆 ¥45-¥255），可留作收银台/订单管理联调样例，不需要可删。
+
+### T10 前端落地记录（2026-10-10，产品 7 演示）
+
+- **specSchema v1 增量**：`variants[].image`（变体覆盖图，null = 前端推导）；`stock` 非库存型输出 null（低库存提示仅库存型生效）。
+- **购买盒形态**（product.blade.php + product-buy.js）：规格组自动形态（组内任一规格值有图 → 列表紧凑流式卡片带「该值最低变体价」；无图 → sn-badge 胶囊；长名超整行截断/选中展开/text-left/title）；附加项双形态（无数量 = 规格胶囊同款；有数量 = 行式卡片 `@container @[400px]:grid-cols-2` 两列，未选圆形 +、选中 bare 步进器，售罄不渲染控件）；吸底结算条（组合图推导链：变体覆盖图 > 首带图规格组选中值 > 商品主图；已选回显/附加项摘要/合计（变体价+附加×数量）/「仅剩 N 件」低库存）。
+- **演示数据**：产品 7「手作黑糖鹿丸鲜奶茶」＝杯型 5 值带图（含中长名/33 字超长名）× 温度 4 × 糖度 5 ＝ 73 可售变体（纪念杯仅正常冰/保温杯超大杯不可热饮/热饮无全糖/超大杯+去冰 库存 2）+ 加料多选数量组（珍珠覆盖 3.50 默认选中/燕麦/奶油顶/马蹄爆爆珠售罄）+ 加一份主角单选组（紫薯波波默认/超长名厚切芝士奶盖/生椰冻售罄）；SVG 占位图 public/demo/img/；种子脚本 .t10-ref/tmp_seed_product7.php（幂等可重跑）。
+- **验证**：Product+Shop 59 用例通过；真机全链路（联动置灰/库存提示/长名展开/步进取消/单选互斥/合计分账/结算条推导）通过；视觉模型审查截图通过。
+- **已知**：产品包独立 `build:styles`（tailwind）本机 MODULE_NOT_FOUND（应用消费根 app.css 经 @source 扫描已覆盖，dist/product.css 注册本就注释）；资产 URL 常量版本占位 → 改 JS 后须 `filament:assets` + 浏览器强刷（构建顺序坑：先包构建后发布）。
+
+### T10 用户反馈修复（2026-10-11）
+
+1. **裸步进器下限语义**：step-number 加 `min-behavior` prop——`disable`（默认，置灰+禁用，纯步进器语义）/ `dispatch`（保持可点、点击派发 sn-stepper-min 供调用方取消，附加项用）——解决「置灰但可点」的语义冲突。
+2. **售罄置灰从未生效的根因**：Blade 同一标签「静态 class + @class([...])」输出两个 class 属性，浏览器丢弃后者（附加项售罄灰、profile 地址选中 ring 均中招）；修法 = 并入 `:class` 对象（商品附加项）或合并进 `@class` 数组基线（choose-address）。规则沉淀 livewire.md。售罄徽章统一 `sn-badge sn-badge-xs sn-badge-solid-gray`。
+3. **列表/大图切换落地**：带图规格组标题右侧图标切换（heroicon bars-3 / squares-2x2），大图形态 = `grid-cols-[repeat(auto-fill,minmax(min(120px,100%),1fr))]` auto-fill 自适应（购买盒容器实测 4 列 @137px）+ 图上角标选中；无图组恒胶囊不参与切换；specModes 状态在 product-buy.js。
+4. **顺带修复**：step-number 的 x-load 从 `visible` 改立即加载——步进器常藏于 x-show（附加项选中才显示），visible 的 IntersectionObserver 不触发，选中后存在点击无响应死区窗口（资产化迁移引入的回归，内联脚本时代无此问题）。
