@@ -5,6 +5,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | addons/*/src/** | .ai/rules/addons-src.md |
+| addons/*/resources/views/** | .ai/rules/blade-attributes.md |
 | addons/*/resources/views/**, addons/order/src/**, addons/product/src/** | .ai/rules/amount-display.md |
 | addons/*/resources/views/** | .ai/rules/empty-state.md |
 | addons/*/src/** | .ai/rules/composition.md |

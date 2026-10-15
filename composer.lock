@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "79540c3c4a6f2ff13f5dc85bbc35d7a1",
+    "content-hash": "d647a2580c228ce150ee51b88b7f5d96",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -9120,18 +9120,118 @@
             }
         },
         {
+            "name": "wsmallnews/media",
+            "version": "1.x-dev",
+            "dist": {
+                "type": "path",
+                "url": "./addons/media",
+                "reference": "42f45b090286f4b6391680953c96f26445def66a"
+            },
+            "require": {
+                "filament/filament": "^4.0 || ^5.0",
+                "php": "^8.2",
+                "spatie/laravel-package-tools": "^1.15.0",
+                "wsmallnews/support": "^1.0"
+            },
+            "require-dev": {
+                "larastan/larastan": "^2.0 || ^3.0",
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.0 || ^8.0",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-arch": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-livewire": "^2.0 || ^3.0 || ^4.0",
+                "rector/rector": "^2.0",
+                "spatie/laravel-ray": "^1.26"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Wsmallnews\\Media\\MediaServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Wsmallnews\\Media\\": "src/",
+                    "Wsmallnews\\Media\\Database\\Factories\\": "database/factories/"
+                },
+                "files": [
+                    "./src/Helpers/helper.php"
+                ]
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Wsmallnews\\Media\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "post-autoload-dump": [
+                    "@php ./vendor/bin/testbench package:discover --ansi"
+                ],
+                "analyse": [
+                    "phpstan analyse"
+                ],
+                "lint": [
+                    "pint"
+                ],
+                "refactor": [
+                    "rector"
+                ],
+                "test": [
+                    "pest"
+                ],
+                "test:lint": [
+                    "pint --test"
+                ],
+                "test:refactor": [
+                    "rector --dry-run"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "smallnews",
+                    "email": "1371606921@qq.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Wsmallnews media library package",
+            "homepage": "https://github.com/wsmallnews/media",
+            "keywords": [
+                "Wsmallnews",
+                "filament",
+                "filament-plugin",
+                "filamentphp",
+                "laravel",
+                "media"
+            ],
+            "support": {
+                "issues": "https://github.com/wsmallnews/media/issues",
+                "source": "https://github.com/wsmallnews/media"
+            },
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "wsmallnews/member",
             "version": "1.x-dev",
             "dist": {
                 "type": "path",
                 "url": "./addons/member",
-                "reference": "45acbdcbc99060f8ded86bf223313219d2ed50d5"
+                "reference": "d868144b3d92da10c248d54fab3e16ab780b1822"
             },
             "require": {
                 "filament/filament": "^5.0",
                 "php": "^8.2",
                 "spatie/laravel-package-tools": "^1.15.0",
-                "wsmallnews/pay": "^1.0"
+                "wsmallnews/profile": "^1.0",
+                "wsmallnews/support": "^1.0"
             },
             "require-dev": {
                 "larastan/larastan": "^3.0",
@@ -9227,13 +9327,14 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/order",
-                "reference": "06ea7b0d168e69944e9989389aed32a769a9fb86"
+                "reference": "6406e511ddf415681df9d11797a278febad8efe0"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
                 "php": "^8.2",
                 "spatie/laravel-package-tools": "^1.15.0",
                 "wsmallnews/pay": "^1.0",
+                "wsmallnews/profile": "^1.0",
                 "wsmallnews/support": "^1.0"
             },
             "require-dev": {
@@ -9506,7 +9607,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/product",
-                "reference": "b2de8dee2323dc2f5e75b2af00f96ac348d48b73"
+                "reference": "07fc4659581006e093ddaf5cf8e6cd7e740a4f08"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -9592,7 +9693,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/profile",
-                "reference": "5d95214d18e67924e36845ad1a96b187faa4b285"
+                "reference": "ba11dccf11bf14ff6656042a2a9275fc85d2805e"
             },
             "require": {
                 "commerceguys/addressing": "^2.0",
@@ -9685,7 +9786,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/shop",
-                "reference": "92953250dd2a2efa6bd6c6e138730247999d7a76"
+                "reference": "afa4a334dae7a217381d93b2fb553e85629a6354"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -9696,6 +9797,7 @@
                 "wsmallnews/pay": "^1.0",
                 "wsmallnews/preference": "^1.0",
                 "wsmallnews/product": "^1.0",
+                "wsmallnews/profile": "^1.0",
                 "wsmallnews/support": "^1.0",
                 "wsmallnews/user": "^1.0"
             },
@@ -9777,7 +9879,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/support",
-                "reference": "7fc06df14c504a7d065e248d87e9c4fc55919023"
+                "reference": "225e6b985ef2c37af55137aa9d237dc4d2e60b29"
             },
             "require": {
                 "filament/filament": "^4.0 || ^5.0",
@@ -9884,7 +9986,7 @@
             "dist": {
                 "type": "path",
                 "url": "./addons/user",
-                "reference": "cd5d74a29350aa14e2abeb6e83397a4146565e5b"
+                "reference": "001525276df9effebe1fb74434d83de15a610b79"
             },
             "require": {
                 "bacon/bacon-qr-code": "^3.0",
@@ -13433,6 +13535,7 @@
         "wsmallnews/cms": 20,
         "wsmallnews/comment": 20,
         "wsmallnews/filament-nestedset": 20,
+        "wsmallnews/media": 20,
         "wsmallnews/member": 20,
         "wsmallnews/order": 20,
         "wsmallnews/pay": 20,

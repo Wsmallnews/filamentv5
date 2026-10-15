@@ -35,6 +35,8 @@ paths:
 | `sn-pay-finished` | shop Cashier → 前端按 method 消费（结果页路由就绪后改 `#[On]` redirect） | 支付完成 | pay_sn |
 | `sn-pay-prepay-result` | shop Cashier → 前端按 method 消费 | 三方 prepay 结果透传（扫码/JSAPI 唤起） | pay_sn, channel, method, result |
 | `sn-profile-address:selected` | profile ChooseAddress → order Confirm（`#[On]` selectAddress） | 地址选中/新增回填 | addressId |
+| `sn-media-selected` | media Picker confirm() → MediaPicker 字段视图 Alpine（x-on:.window 监听，无跳转，纯局部回填） | 选择确认 → 回填字段状态（$wire.set） | statePath, multiple, values, urls |
+| `sn-media-picker-closed` | media Picker 取消按钮 → MediaPicker 字段视图 Alpine | 关闭选择弹窗 | statePath |
 
 - **将来订单操作事件**（确认收货/取消/退款按钮在 order 包组件中完成状态流转后派发，宿主页监听后刷新或跳转，同一模式扩展）：`sn-order-received` / `sn-order-cancelled` / `sn-order-refunded`。
 

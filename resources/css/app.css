@@ -27,6 +27,18 @@
 /* wsmallnews/profile */
 @import "../../vendor/wsmallnews/profile/resources/css/index.css";
 
+/* wsmallnews/user */
+@import "../../vendor/wsmallnews/user/resources/css/index.css";
+
+/* wsmallnews/member */
+@import "../../vendor/wsmallnews/member/resources/css/index.css";
+
+/* wsmallnews/wallet */
+@import "../../vendor/wsmallnews/wallet/resources/css/index.css";
+
+/* wsmallnews/media */
+@import "../../vendor/wsmallnews/media/resources/css/index.css";
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';

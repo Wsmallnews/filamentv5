@@ -1,6 +1,6 @@
 # Media Library 使用规范与订单图片快照改进计划
 
-> **状态：⏸️ 暂缓（2026-09-22）。** 本轮为纯分析会话，未修改任何代码。本文档自包含全部调查结论、已确认的分析判断与建议实施方案，供后续会话（无此前对话上下文）直接接手。
+> **状态：❌ 已废弃（2026-10-08，被 `plan-media-package.md` 取代）。** spatie 双轨制方案整体放弃：经重新分析（对照 curator/slimani/waad/ralphjsmit/tomato 五插件与国内素材库模型）用户拍板新建独立 media 素材管理扩展包、移除 spatie（移除推迟到替换轮）。本文档仅存档；其中 §3.3 订单快照「存完整 URL」结论已被修正为「存 path」（不可变性由 path 不可变 + 文件永不删保证），§3.2 navigation icon plain 结论被「统一值对象 + string 兼容」取代。
 > 触发背景：用户就 spatie/laravel-medialibrary 提出 5 个问题（历史遗留 / 正确用法 / navigation icon 取舍 / 订单图快照 / media 存宽高），已完成分析，等待排期实施。
 
 ## 1. 环境与版本事实

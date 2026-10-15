@@ -22,6 +22,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Wsmallnews\Category\CategoryPlugin;
 use Wsmallnews\Cms\CmsPlugin;
 use Wsmallnews\Comment\CommentPlugin;
+use Wsmallnews\Media\MediaPlugin;
 use Wsmallnews\Member\MemberPlugin;
 use Wsmallnews\Order\OrderPlugin;
 use Wsmallnews\Pay\PayPlugin;
@@ -70,6 +71,7 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 CategoryPlugin::make(),
                 CmsPlugin::make(),
+                MediaPlugin::make(),
                 MemberPlugin::make(),
                 OrderPlugin::make(),
                 PayPlugin::make(),

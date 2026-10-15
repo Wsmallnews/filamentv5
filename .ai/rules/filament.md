@@ -5,6 +5,12 @@ paths:
 
 # Filament
 
+## 完全自定义 Page 的交互优先级：Filament Action > Livewire wire:click > Alpine.js
+素材管理这种非 Resource 的完全自定义 Filament Page，交互按以下优先级规划：
+1. **Filament Action（最高优先）**：确认弹框/表单 modal/通知一律用 Action（`->requiresConfirmation()` / `->schema()` / `mountAction()`），与 panel 资源风格统一；
+2. **Livewire wire:click**：服务端可承载的业务方法（查询/删除/上传入账）直接 `wire:click`；
+3. **Alpine.js（最低优先）**：只承载纯客户端能力——事件监听（如 `livewire-upload-progress`）、本地状态管理（如多选 Set）、浏览器 API（clipboard/drag-drop）。参照：Filament table 的选中也是 Alpine Set + entangle（`$wire.set(..., false)` 不触发请求），不是每次点选发请求。禁止在 Alpine 里写业务逻辑或 modal。
+
 ## 类引入规范：Forms/Schemas 用目录导入，其余顶部 use 后直用
 Filament 的 `Forms` 与 `Schemas` 两个目录类数量庞大，**用目录导入**避免 use 块爆炸：`use Filament\Forms;` + `use Filament\Schemas;`，正文以 `Forms\Components\TextInput` / `Schemas\Components\Section` 前缀引用。其他类（Action/枚举/图标/工厂等）一律顶部 `use` 后直接短名引用。同一目录需引用**多个类**时也用目录导入（如模型 casts 引多个枚举：`use Wsmallnews\Product\Enums;` 后 `Enums\ExtraStatus::class`）。**Get/Set 的正确类**（易错，勿凭记忆写）：`use Filament\Schemas\Components\Utilities\Get;` + `use Filament\Schemas\Components\Utilities\Set;`——两者都在 **Schemas** 的 Utilities 下（不存在 `Forms\Set`/`Actions\Set`，闭包参数写 `fn (Set $set)` / `fn (Get $get)`）。
 
